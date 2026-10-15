@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <meta name="description" content="Дневник звёздных баллов для семьи" />
+    <meta name="theme-color" content="#12B3C4" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Звёзды" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="manifest" href="__BASE__/manifest.json" />
+    <link rel="apple-touch-icon" href="__BASE__/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="__BASE__/icons/icon-192.png" />
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      html {
+        /* Follows the iPhone text size setting; the app reads it to scale fonts. */
+        font: -apple-system-body;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        overflow: hidden;
+        margin: 0;
+        background: #fffcf5;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0b2236;
+        }
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('__BASE__/sw.js', { scope: '__BASE__/' }).catch(function () {});
+        });
+      }
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(function () {});
+      }
+    </script>
+  </head>
+
+  <body>
+    <noscript>Для работы приложения нужен JavaScript.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

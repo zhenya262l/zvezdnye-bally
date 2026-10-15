@@ -1,0 +1,58 @@
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { Avatar } from '@/components/art/Avatar';
+import { ChevronIcon } from '@/components/art/Icons';
+import { Card } from '@/components/Card';
+import { Screen } from '@/components/Screen';
+import { T } from '@/components/T';
+import { formatAge } from '@/lib/dates';
+import { useChildren } from '@/lib/queries';
+import { t } from '@/strings.ru';
+import { brand, space, TOUCH_MIN, usePalette } from '@/theme';
+
+export default function Settings() {
+  const p = usePalette();
+  const kids = useChildren();
+  return (
+    <Screen inTabs>
+      <T v="title">{t.settings.title}</T>
+      <Card title={t.settings.profiles} accent={brand.violet}>
+        <T v="small" muted>
+          {t.settings.profilesHint}
+        </T>
+        {(kids.data ?? []).map((c) => (
+          <Pressable
+            key={c.id}
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/child-edit', params: { id: c.id } })}
+            style={({ pressed }) => [styles.row, { borderColor: p.border, opacity: pressed ? 0.7 : 1 }]}>
+            <Avatar id={c.avatar} color={c.color} size={44} />
+            <View style={styles.flex}>
+              <T v="bodyBold">{c.name}</T>
+              <T v="small" muted>
+                {formatAge(c.birth_date)}
+              </T>
+            </View>
+            <ChevronIcon color={p.textMuted} />
+          </Pressable>
+        ))}
+      </Card>
+      <T v="small" muted>
+        {t.settings.later}
+      </T>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    minHeight: TOUCH_MIN,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.m,
+    borderTopWidth: 1,
+    paddingTop: space.s,
+  },
+  flex: { flex: 1 },
+});

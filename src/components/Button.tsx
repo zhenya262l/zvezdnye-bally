@@ -1,0 +1,86 @@
+import type { ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+
+import { radius, space, TOUCH_MIN, usePalette } from '@/theme';
+import { T } from './T';
+
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
+
+type Props = {
+  title: string;
+  onPress?: () => void;
+  variant?: Variant;
+  disabled?: boolean;
+  loading?: boolean;
+  icon?: ReactNode;
+  subtitle?: string;
+  testID?: string;
+};
+
+export function Button({ title, onPress, variant = 'primary', disabled, loading, icon, subtitle, testID }: Props) {
+  const p = usePalette();
+  const bg = {
+    primary: p.primary,
+    accent: p.accent,
+    secondary: p.card,
+    ghost: 'transparent',
+    danger: p.card,
+  }[variant];
+  const fg = {
+    primary: p.onPrimary,
+    accent: '#FFFFFF',
+    secondary: p.text,
+    ghost: p.primary,
+    danger: p.danger,
+  }[variant];
+  const bordered = variant === 'secondary' || variant === 'danger';
+  const inactive = disabled || loading;
+
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!inactive, busy: !!loading }}
+      disabled={inactive}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.base,
+        { backgroundColor: bg, opacity: inactive ? 0.5 : pressed ? 0.85 : 1 },
+        bordered && { borderWidth: 2, borderColor: variant === 'danger' ? p.danger : p.border },
+        pressed && styles.pressed,
+      ]}>
+      {loading ? (
+        <ActivityIndicator color={fg} />
+      ) : (
+        <View style={styles.row}>
+          {icon}
+          <View style={styles.texts}>
+            <T v="bodyBold" color={fg} center={!icon}>
+              {title}
+            </T>
+            {subtitle ? (
+              <T v="small" color={fg} center={!icon} style={styles.sub}>
+                {subtitle}
+              </T>
+            ) : null}
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  base: {
+    minHeight: TOUCH_MIN,
+    borderRadius: radius.l,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.m,
+    justifyContent: 'center',
+    alignItems: 'stretch',
+  },
+  pressed: { transform: [{ scale: 0.98 }] },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.m },
+  texts: { flexShrink: 1 },
+  sub: { opacity: 0.85 },
+});

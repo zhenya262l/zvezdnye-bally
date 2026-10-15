@@ -1,18 +1,19 @@
 # Настройка проекта Supabase
 
-Выполняется один раз. Все пункты делаются в панели supabase.com.
+Выполнено 15 октября 2026 для проекта `zvezdnye-bally` (ref `rbgibuexyvegqbmuiiub`, регион Frankfurt, тариф Free). Шаги ниже нужны, если проект придётся создать заново.
 
-1. **New project.** Название `zvezdnye-bally`, регион Central EU (Frankfurt), тариф Free.
-2. **SQL Editor → New query.** Вставить файл `migrations/20261015000100_stage1_core.sql` целиком → **Run**. Ожидаемый ответ: «Success. No rows returned».
+1. **New project.** Название `zvezdnye-bally`, регион Central EU (Frankfurt), тариф Free. Галочку «Automatically expose new tables» снять.
+2. **SQL Editor → New query.** Вставить файл `migrations/20261015000100_stage1_core.sql` целиком → **Run** → в окне предупреждения **Run query**. Ожидаемый ответ: «Success. No rows returned».
 3. **Authentication → Sign In / Providers.**
-   - Включить **Allow anonymous sign-ins** → **Save**. Так входят телефоны детей.
-   - В разделе **Email**: «Confirm email» оставить включённым, **Email OTP Length** = 6, **Email OTP Expiration** = 3600 → **Save**.
-4. **Authentication → Emails → Templates.** В шаблонах **Confirm signup** и **Magic Link**:
+   - Включить **Allow anonymous sign-ins** → **Save changes**. Так входят телефоны детей.
+   - **Email**: «Confirm email» оставить включённым, **Email OTP Length** = 6, **Email OTP Expiration** = 3600 → **Save**.
+4. **Authentication → Emails → SMTP Settings.** Включить **Enable custom SMTP**:
+   - Sender email и Username: почта Gmail владельца. Sender name: `Звёздные баллы`.
+   - Host `smtp.gmail.com`, порт 465, интервал 60 секунд.
+   - Password: пароль приложения Google (myaccount.google.com/apppasswords, нужна двухэтапная аутентификация). Вводит владелец.
+   Без своего SMTP шаблоны писем не редактируются и вместо кода приходит ссылка.
+5. **Authentication → Emails → Templates.** В шаблонах **Confirm sign up** и **Magic link or OTP**:
    - Subject: `Код для входа в «Звёздные баллы»`
    - Body: содержимое `email-templates/confirmation.html` и `email-templates/magic_link.html`.
-5. **Authentication → URL Configuration.** Site URL: `https://<имя>.github.io/zvezdnye-bally/`.
-6. **Project Settings → API Keys.** Скопировать Project URL и **publishable key** в переменные репозитория GitHub `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY`. Секретный ключ (secret / service_role) никуда не копировать.
-
-## Ограничения бесплатной почты
-
-Встроенная почта Supabase отправляет письма только адресам из команды проекта (Organization → Team) и не больше 2 писем в час. Родитель должен входить той почтой, на которую зарегистрирован Supabase. Для второго родителя понадобится свой почтовый сервер (SMTP) — это этап 2.
+6. **Authentication → URL Configuration.** Site URL: `https://zhenya262l.github.io/zvezdnye-bally/`.
+7. **Project Settings → API Keys.** Project URL и **publishable key** записаны в переменные репозитория GitHub `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY`. Секретный ключ никуда не копируется.

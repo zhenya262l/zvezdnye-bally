@@ -20,6 +20,8 @@ create table private.app_admins (
   user_id     uuid primary key references auth.users (id) on delete cascade,
   created_at  timestamptz not null default now()
 );
+-- Read only by SECURITY DEFINER functions: no policies, no client access.
+alter table private.app_admins enable row level security;
 
 create or replace function private.is_admin()
 returns boolean

@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
+import { Banner } from '@/components/Banner';
 import { Button } from '@/components/Button';
+import { ActionLine } from '@/components/ButtonRow';
 import { Card } from '@/components/Card';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { FamilyRequestsCard } from '@/components/FamilyRequestsCard';
@@ -67,25 +69,30 @@ export default function Family() {
       </Card>
 
       <Card title={t.family.phones} accent={brand.coral}>
-        {phones.length === 0 ? <T muted>{t.family.noPhones}</T> : null}
+        {members.isError ? <Banner text={errorText(members.error)} /> : null}
+        {members.isSuccess && phones.length === 0 ? <T muted>{t.family.noPhones}</T> : null}
         {phones.map((m) => {
           const c = childOf(m.child_id);
           return (
             <View key={m.id} style={[styles.phone, { borderColor: p.border }]}>
-              {c ? <Avatar id={c.avatar} color={c.color} size={44} /> : null}
-              <View style={styles.flex}>
-                <T v="bodyBold">{t.family.phoneOf(childName(m.child_id))}</T>
-                <T v="small" muted>
-                  {t.family.linkedAt(formatDateTime(m.created_at, tz))}
-                </T>
-              </View>
-              <View style={styles.unlink}>
-                <Button
-                  title={t.family.unlink}
-                  variant="danger"
-                  onPress={() => setDialog({ kind: 'unlink', member: m, name: childName(m.child_id) })}
-                />
-              </View>
+              <ActionLine
+                action={
+                  <Button
+                    title={t.family.unlink}
+                    variant="danger"
+                    onPress={() => setDialog({ kind: 'unlink', member: m, name: childName(m.child_id) })}
+                  />
+                }>
+                <View style={styles.who}>
+                  {c ? <Avatar id={c.avatar} color={c.color} size={44} /> : null}
+                  <View style={styles.flex}>
+                    <T v="bodyBold">{t.family.phoneOf(childName(m.child_id))}</T>
+                    <T v="small" muted>
+                      {t.family.linkedAt(formatDateTime(m.created_at, tz))}
+                    </T>
+                  </View>
+                </View>
+              </ActionLine>
             </View>
           );
         })}
@@ -98,12 +105,18 @@ export default function Family() {
             {m.user_id === who.data?.user_id ? ` (${t.family.you.toLowerCase()})` : ''}
           </T>
         ))}
-        <Button
-          testID="invite-parent"
-          title={t.family.invite}
-          variant="secondary"
-          onPress={() => setInviteKey(Date.now())}
-        />
+        {parents.length >= 2 ? (
+          <T v="small" muted testID="invite-full">
+            {t.family.inviteFull}
+          </T>
+        ) : members.isSuccess ? (
+          <Button
+            testID="invite-parent"
+            title={t.family.invite}
+            variant="secondary"
+            onPress={() => setInviteKey(Date.now())}
+          />
+        ) : null}
       </Card>
 
       {access.data?.is_admin ? <FamilyRequestsCard tz={tz} /> : null}
@@ -176,7 +189,7 @@ export default function Family() {
 }
 
 const styles = StyleSheet.create({
-  phone: { flexDirection: 'row', alignItems: 'center', gap: space.m, borderTopWidth: 1, paddingTop: space.m },
+  phone: { borderTopWidth: 1, paddingTop: space.m },
+  who: { flexDirection: 'row', alignItems: 'center', gap: space.m },
   flex: { flex: 1 },
-  unlink: { minWidth: 120 },
 });

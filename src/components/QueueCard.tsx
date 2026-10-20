@@ -7,6 +7,7 @@ import { t } from '@/strings.ru';
 import { brand, radius, space, usePalette } from '@/theme';
 import { Avatar } from './art/Avatar';
 import { Button } from './Button';
+import { ButtonRow } from './ButtonRow';
 import { Chip } from './Chip';
 import { T } from './T';
 
@@ -67,20 +68,16 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
         </View>
       </View>
       {item.status === 'pending' && onDecide ? (
-        <View style={styles.buttons}>
-          <View style={styles.flex}>
-            <Button testID={`sign-${item.id}`} title={t.approvals.sign} onPress={() => onDecide(true)} loading={busy} />
-          </View>
-          <View style={styles.flex}>
-            <Button
-              testID={`reject-${item.id}`}
-              title={t.approvals.reject}
-              variant="secondary"
-              onPress={() => onDecide(false)}
-              disabled={busy}
-            />
-          </View>
-        </View>
+        <ButtonRow>
+          <Button testID={`sign-${item.id}`} title={t.approvals.sign} onPress={() => onDecide(true)} loading={busy} />
+          <Button
+            testID={`reject-${item.id}`}
+            title={t.approvals.reject}
+            variant="secondary"
+            onPress={() => onDecide(false)}
+            disabled={busy}
+          />
+        </ButtonRow>
       ) : decided ? (
         <T v="small" color={item.status === 'approved' ? p.successText : p.textMuted}>
           {decided}
@@ -126,7 +123,5 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: space.m },
   texts: { flex: 1, gap: 2 },
   points: { borderRadius: radius.pill, paddingHorizontal: space.m, paddingVertical: 2 },
-  buttons: { flexDirection: 'row', gap: space.s },
   praise: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.s },
-  flex: { flex: 1 },
 });

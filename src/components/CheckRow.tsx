@@ -12,7 +12,7 @@ export function CheckRow({ checked, onChange, label, testID }: Props) {
     <Pressable
       testID={testID}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
+      aria-checked={checked}
       accessibilityLabel={label}
       onPress={() => onChange(!checked)}
       style={styles.row}>

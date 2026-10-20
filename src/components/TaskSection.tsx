@@ -45,8 +45,12 @@ export function TaskSection({ section, open, onToggle, doneOpen, onToggleDone, r
   const p = usePalette();
   const { active, done } = splitTasks(section.tasks);
   const fg = onColor(section.color);
-  const allDone = active.length === 0 && done.length > 0;
-  const progress = allDone ? `✓ ${t.child.sectionAllDone}` : t.child.sectionProgress(done.length, section.tasks.length);
+  // Progress counts only credited tasks: «не засчитано» is not «сделано».
+  const credited = done.filter((x) => x.status === 'approved').length;
+  const rejected = done.length - credited;
+  const allDone = active.length === 0 && rejected === 0 && credited > 0;
+  const progress = allDone ? `✓ ${t.child.sectionAllDone}` : t.child.sectionProgress(credited, section.tasks.length);
+  const doneLabel = t.child.doneGroup(credited, rejected);
 
   return (
     <View style={[styles.card, { borderColor: section.color, backgroundColor: p.card }]}>
@@ -54,7 +58,7 @@ export function TaskSection({ section, open, onToggle, doneOpen, onToggleDone, r
         ref={headerRef}
         testID={`section-${section.id}`}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         accessibilityLabel={`${section.name}. ${progress}. ${open ? t.child.hideTasks : t.child.showTasks}`}
         onPress={onToggle}
         style={({ pressed }) => [styles.band, { backgroundColor: section.color, opacity: pressed ? 0.85 : 1 }]}>
@@ -77,11 +81,12 @@ export function TaskSection({ section, open, onToggle, doneOpen, onToggleDone, r
                 ref={doneRef}
                 testID={`done-group-${section.id}`}
                 accessibilityRole="button"
-                accessibilityState={{ expanded: doneOpen }}
+                aria-expanded={doneOpen}
+                accessibilityLabel={doneLabel}
                 onPress={onToggleDone}
                 style={[styles.doneLine, { borderColor: p.border }]}>
-                <T v="bodyBold" color={p.successText} style={styles.flex}>
-                  {`✓ ${t.child.doneGroup(done.length)}`}
+                <T v="bodyBold" color={credited ? p.successText : p.textMuted} style={styles.flex}>
+                  {credited ? `✓ ${doneLabel}` : doneLabel}
                 </T>
                 <T v="big" color={p.textMuted}>
                   {doneOpen ? '▾' : '▸'}

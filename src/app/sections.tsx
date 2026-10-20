@@ -20,8 +20,11 @@ import { childColors, radius, space, usePalette } from '@/theme';
 /** Parent: rename sections, change their colour, add new ones. */
 export default function Sections() {
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const who = useWho();
   const sections = useSections();
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (who.data && who.data.member?.role !== 'parent') return <Redirect href="/" />;
   if (sections.isPending) return <Loading />;
@@ -53,6 +56,8 @@ function SectionEditor({ section }: { section: Section | null }) {
     setMsg(null);
     try {
       await api.saveSection(section?.id ?? null, name, color);
+      // A new section: clear the form at once, so a second tap cannot add it twice.
+      if (!section) setName('');
       setMsg({ text: t.common.done, kind: 'success' });
       void qc.invalidateQueries({ queryKey: ['sections', uid] });
       void qc.invalidateQueries({ queryKey: ['childDay', uid] });
@@ -73,8 +78,8 @@ function SectionEditor({ section }: { section: Section | null }) {
             <Pressable
               key={c}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              accessibilityLabel={c}
+              aria-checked={selected}
+              accessibilityLabel={t.colors[c.toLowerCase()] ?? c}
               onPress={() => setColor(c)}
               style={[styles.swatchOuter, { borderColor: selected ? p.text : 'transparent' }]}>
               <View style={[styles.swatch, { backgroundColor: c }]} />

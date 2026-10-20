@@ -11,6 +11,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { auth, errorText } from '@/lib/api';
 import { mustInstallFirst } from '@/lib/platform';
+import { useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { space } from '@/theme';
 
@@ -19,6 +20,7 @@ const RESEND_SECONDS = 60;
 
 export default function ParentLogin() {
   const qc = useQueryClient();
+  const who = useWho();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -33,6 +35,7 @@ export default function ParentLogin() {
   }, [cooldown]);
 
   if (mustInstallFirst()) return <Redirect href="/install" />;
+  if (who.data?.member?.role === 'parent') return <Redirect href="/" />;
 
   const normalized = email.trim().toLowerCase();
 

@@ -20,7 +20,7 @@ export function Chip({ label, selected, onPress, color, testID, multi }: Props) 
     <Pressable
       testID={testID}
       accessibilityRole={multi ? 'checkbox' : 'radio'}
-      accessibilityState={multi ? { checked: selected } : { selected }}
+      aria-checked={selected}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,

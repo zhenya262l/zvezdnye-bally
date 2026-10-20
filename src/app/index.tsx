@@ -5,25 +5,28 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { errorText } from '@/lib/api';
 import { mustInstallFirst } from '@/lib/platform';
-import { useSession, useWho } from '@/lib/session';
+import { retryRestore, useSession, useWho } from '@/lib/session';
 import { isConfigured } from '@/lib/supabase';
+import { t } from '@/strings.ru';
 
 /** Decides where to go: install guide, sign-in, family setup, parent or child screens. */
 export default function Gate() {
   const ready = useSession((s) => s.ready);
   const session = useSession((s) => s.session);
+  const restoring = useSession((s) => s.restoring);
   const who = useWho();
 
   if (mustInstallFirst()) return <Redirect href="/install" />;
   if (!isConfigured) {
     return (
       <Screen>
-        <T v="title">Приложение не настроено</T>
-        <T muted>Не заданы адрес и ключ Supabase в настройках сборки.</T>
+        <T v="title">{t.gate.notConfiguredTitle}</T>
+        <T muted>{t.gate.notConfiguredText}</T>
       </Screen>
     );
   }
   if (!ready) return <Loading />;
+  if (!session && restoring) return <LoadError kind="info" text={t.gate.restoring} onRetry={() => void retryRestore()} />;
   if (!session) return <Redirect href="/welcome" />;
   if (who.isPending) return <Loading />;
   if (who.isError) return <LoadError text={errorText(who.error)} onRetry={() => who.refetch()} />;

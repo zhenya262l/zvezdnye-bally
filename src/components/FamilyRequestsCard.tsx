@@ -11,6 +11,7 @@ import { t } from '@/strings.ru';
 import { brand, space, usePalette } from '@/theme';
 import { Banner } from './Banner';
 import { Button } from './Button';
+import { ButtonRow } from './ButtonRow';
 import { Card } from './Card';
 import { T } from './T';
 
@@ -22,6 +23,7 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
   const list = useFamilyRequests(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showDecided, setShowDecided] = useState(false);
 
   async function decide(id: string, approve: boolean) {
     setBusy(id);
@@ -37,11 +39,15 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
   }
 
   const rows = list.data ?? [];
+  // Waiting requests are what the owner acts on; decisions fold away.
+  const pending = rows.filter((r) => r.status === 'pending');
+  const decided = rows.filter((r) => r.status !== 'pending');
+  const shown = showDecided ? [...pending, ...decided] : pending;
   return (
     <Card title={t.admin.title} accent={brand.sun}>
       {list.isError ? <Banner text={errorText(list.error)} /> : null}
-      {rows.length === 0 && !list.isPending ? <T muted>{t.admin.empty}</T> : null}
-      {rows.map((r) => (
+      {pending.length === 0 && !list.isPending ? <T muted>{t.admin.empty}</T> : null}
+      {shown.map((r) => (
         <View key={r.id} testID={`family-request-${r.id}`} style={[styles.row, { borderColor: p.border }]}>
           <T v="bodyBold">{`${r.display_name} · ${r.email}`}</T>
           <T v="small" muted>
@@ -52,15 +58,13 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
           </T>
           {r.status === 'pending' ? (
             <View style={styles.buttons}>
-              <View style={styles.flex}>
+              <ButtonRow>
                 <Button
                   testID={`approve-${r.id}`}
                   title={t.admin.approve}
                   onPress={() => decide(r.id, true)}
                   loading={busy === r.id}
                 />
-              </View>
-              <View style={styles.flex}>
                 <Button
                   testID={`decline-${r.id}`}
                   title={t.admin.decline}
@@ -68,7 +72,7 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
                   onPress={() => decide(r.id, false)}
                   disabled={busy === r.id}
                 />
-              </View>
+              </ButtonRow>
             </View>
           ) : (
             <View style={styles.decided}>
@@ -89,6 +93,14 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
           )}
         </View>
       ))}
+      {decided.length > 0 ? (
+        <Button
+          testID="requests-decided"
+          title={showDecided ? t.admin.hideDecided : t.admin.decidedGroup(decided.length)}
+          variant="ghost"
+          onPress={() => setShowDecided((v) => !v)}
+        />
+      ) : null}
       <Banner text={error} />
       <Button
         testID="consent-admin"
@@ -102,7 +114,7 @@ export function FamilyRequestsCard({ tz }: { tz?: string }) {
 
 const styles = StyleSheet.create({
   row: { gap: 2, borderTopWidth: 1, paddingTop: space.s },
-  buttons: { flexDirection: 'row', gap: space.s, marginTop: space.xs },
+  buttons: { marginTop: space.xs },
   decided: { flexDirection: 'row', alignItems: 'center', gap: space.s },
   flex: { flex: 1 },
 });

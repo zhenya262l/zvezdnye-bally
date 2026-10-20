@@ -7,11 +7,15 @@ import { T } from '@/components/T';
 import { Island } from '@/components/art/Island';
 import { KidsIcon, StarIcon } from '@/components/art/Icons';
 import { mustInstallFirst } from '@/lib/platform';
+import { useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { brand, space } from '@/theme';
 
 export default function Welcome() {
+  const who = useWho();
   if (mustInstallFirst()) return <Redirect href="/install" />;
+  // The saved sign-in came back (for example, the internet returned): go on.
+  if (who.data?.member) return <Redirect href="/" />;
   return (
     <Screen bg={brand.ocean}>
       <View style={styles.hero}>

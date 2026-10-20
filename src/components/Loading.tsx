@@ -16,12 +16,12 @@ export function Loading() {
   );
 }
 
-export function LoadError({ text, onRetry }: { text: string; onRetry: () => void }) {
+export function LoadError({ text, onRetry, kind }: { text: string; onRetry: () => void; kind?: 'error' | 'info' }) {
   const p = usePalette();
   return (
     <View style={[styles.center, { backgroundColor: p.bg }]}>
       <View style={styles.box}>
-        <Banner text={text} />
+        <Banner text={text} kind={kind} />
         <Button title={t.common.retry} onPress={onRetry} />
       </View>
     </View>

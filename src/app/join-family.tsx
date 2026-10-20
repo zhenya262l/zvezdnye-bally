@@ -10,7 +10,7 @@ import { Chip } from '@/components/Chip';
 import { CodeInput } from '@/components/CodeInput';
 import { ConsentBox } from '@/components/ConsentBox';
 import { Field } from '@/components/Field';
-import { Loading } from '@/components/Loading';
+import { LoadError, Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, errorText, toApiError } from '@/lib/api';
@@ -26,7 +26,10 @@ export default function JoinFamily() {
   const who = useWho();
   const consent = useConsent();
   const [role, setRole] = useState<'mom' | 'dad' | 'other'>('dad');
-  const [agreed, setAgreed] = useState(false);
+  // The tick belongs to the edition the parent read (see family-request.tsx).
+  const [agreedId, setAgreedId] = useState<number | null>(null);
+  const agreed = !!consent.data && agreedId === consent.data.id;
+  const setAgreed = (v: boolean) => setAgreedId(v && consent.data ? consent.data.id : null);
   const [otherName, setOtherName] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +38,7 @@ export default function JoinFamily() {
   if (!session) return <Redirect href="/" />;
   if (who.isPending || consent.isPending) return <Loading />;
   if (who.data?.member || who.data?.is_anonymous) return <Redirect href="/" />;
+  if (consent.isError) return <LoadError text={errorText(consent.error)} onRetry={() => consent.refetch()} />;
 
   const displayName = role === 'mom' ? t.setup.mom : role === 'dad' ? t.setup.dad : otherName.trim();
 
@@ -42,7 +46,7 @@ export default function JoinFamily() {
     setError(null);
     if (!displayName) return setError(t.errors.invalid_display_name);
     if (code.length < 6) return setError(t.errors.invalid_code);
-    if (!consent.data) return setError(t.errors.consent_not_configured);
+    if (!consent.data) return setError(t.join.closed);
     if (!agreed) return setError(t.errors.consent_required);
     setBusy(true);
     try {
@@ -79,7 +83,7 @@ export default function JoinFamily() {
       {consent.data ? (
         <ConsentBox consent={consent.data} checked={agreed} onChange={setAgreed} />
       ) : (
-        <T>{t.access.closed}</T>
+        <T>{t.join.closed}</T>
       )}
       <Banner text={error} />
       <Button

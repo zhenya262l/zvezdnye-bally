@@ -1,5 +1,5 @@
 import type { Consent } from '@/lib/api';
-import { formatDate } from '@/lib/dates';
+import { dateISO, formatDate } from '@/lib/dates';
 import { t } from '@/strings.ru';
 import { brand } from '@/theme';
 import { Card } from './Card';
@@ -16,7 +16,7 @@ export function ConsentBox({ consent, checked, onChange }: Props) {
   return (
     <Card title={t.consent.title} accent={brand.violet}>
       <T v="small" muted>
-        {t.consent.version(consent.id, formatDate(consent.created_at.slice(0, 10)))}
+        {t.consent.version(consent.id, formatDate(dateISO(consent.created_at)))}
       </T>
       <T v="small" testID="consent-text" selectable>
         {consent.body}

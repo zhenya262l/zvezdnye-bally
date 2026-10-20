@@ -11,7 +11,7 @@ import { Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, errorText, type Consent } from '@/lib/api';
-import { formatDate } from '@/lib/dates';
+import { dateISO, formatDate } from '@/lib/dates';
 import { useConsent, useFamilyAccess } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { t } from '@/strings.ru';
@@ -19,9 +19,12 @@ import { t } from '@/strings.ru';
 /** Owner only: the consent text new parents accept. Each save is a new version. */
 export default function ConsentAdmin() {
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const access = useFamilyAccess();
   const consent = useConsent();
 
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (access.isPending || consent.isPending) return <Loading />;
   if (!access.data?.is_admin) return <Redirect href="/" />;
@@ -54,7 +57,7 @@ function Editor({ current }: { current: Consent }) {
       <T v="title">{t.admin.consentTitle}</T>
       <T muted>{t.admin.consentLead}</T>
       <T v="bodyBold">
-        {current ? t.admin.current(current.id, formatDate(current.created_at.slice(0, 10))) : t.admin.noConsent}
+        {current ? t.admin.current(current.id, formatDate(dateISO(current.created_at))) : t.admin.noConsent}
       </T>
       <Field
         testID="consent-body"

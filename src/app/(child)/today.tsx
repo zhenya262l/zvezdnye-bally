@@ -70,12 +70,27 @@ export default function Today() {
       setError(null);
     },
     onSuccess: (r, task) => {
+      // Without a check the points are credited at once: show them in the
+      // formula right away, so the star and the badge show the new balance.
+      const credited = r.status === 'approved' && !r.already && task.status !== 'approved' ? task.points : 0;
       qc.setQueryData<ChildDay>(['childDay', uid, 'me'], (old) =>
         old
           ? {
               ...old,
+              formula: {
+                ...old.formula,
+                earned: old.formula.earned + credited,
+                left: old.formula.left + credited,
+              },
               tasks: old.tasks.map((x) =>
-                x.id === task.id ? { ...x, status: r.status, completion_id: r.completion_id } : x,
+                x.id === task.id
+                  ? {
+                      ...x,
+                      status: r.status,
+                      completion_id: r.completion_id,
+                      earned: credited ? task.points : x.earned,
+                    }
+                  : x,
               ),
             }
           : old,
@@ -206,7 +221,7 @@ export default function Today() {
           testID="balance-pill"
           style={[styles.pill, { top: insets.top + space.s }]}>
           <T v="big" color={brand.ocean}>
-            {t.child.balanceNow(pill.value)}
+            {t.child.balanceNow(day.data?.formula.left ?? pill.value)}
           </T>
         </View>
       ) : null}

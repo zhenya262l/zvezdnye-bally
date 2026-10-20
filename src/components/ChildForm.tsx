@@ -53,7 +53,7 @@ export function ChildForm({ value, onChange, errors, testPrefix = 'child' }: Pro
             <Pressable
               key={id}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              aria-checked={selected}
               accessibilityLabel={t.avatars[id]}
               onPress={() => onChange({ ...value, avatar: id })}
               style={[
@@ -74,8 +74,8 @@ export function ChildForm({ value, onChange, errors, testPrefix = 'child' }: Pro
             <Pressable
               key={c}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              accessibilityLabel={c}
+              aria-checked={selected}
+              accessibilityLabel={t.colors[c.toLowerCase()] ?? c}
               onPress={() => onChange({ ...value, color: c })}
               style={[styles.swatchOuter, { borderColor: selected ? p.text : 'transparent' }]}>
               <View style={[styles.swatch, { backgroundColor: c }]} />

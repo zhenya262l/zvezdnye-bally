@@ -10,7 +10,7 @@ import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Field } from '@/components/Field';
-import { Loading } from '@/components/Loading';
+import { LoadError, Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { Stepper } from '@/components/Stepper';
 import { SwitchRow } from '@/components/SwitchRow';
@@ -29,11 +29,14 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace('/task
 export default function TaskEdit() {
   const { id, child } = useLocalSearchParams<{ id?: string; child?: string }>();
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const who = useWho();
   const kids = useChildren();
   const sections = useSections();
   const tasks = useTasks(child);
 
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (who.data && who.data.member?.role !== 'parent') return <Redirect href="/" />;
   if (id && !child) {
@@ -45,6 +48,20 @@ export default function TaskEdit() {
     );
   }
   if (kids.isPending || sections.isPending || (id && tasks.isPending)) return <Loading />;
+  // Offline is not «nothing here»: offer to try again.
+  const failed = kids.error ?? sections.error ?? (id ? tasks.error : null);
+  if (failed) {
+    return (
+      <LoadError
+        text={errorText(failed)}
+        onRetry={() => {
+          void kids.refetch();
+          void sections.refetch();
+          if (id) void tasks.refetch();
+        }}
+      />
+    );
+  }
 
   const firstSection = sections.data?.[0]?.id ?? '';
   if (!id) {
@@ -70,7 +87,7 @@ export default function TaskEdit() {
   if (!task) {
     return (
       <Screen>
-        <NotFound fallback="/tasks" />
+        <NotFound fallback={{ pathname: '/tasks', params: { child } }} />
       </Screen>
     );
   }
@@ -156,7 +173,7 @@ function TaskForm({ initial }: { initial: TaskInput }) {
 
   return (
     <Screen>
-      <BackLink fallback="/tasks" />
+      <BackLink fallback={{ pathname: '/tasks', params: { child: initial.childIds[0] } }} />
       <T v="title">{isNew ? t.taskEdit.titleNew : t.taskEdit.titleEdit}</T>
       <Field
         testID="task-title"
@@ -175,7 +192,7 @@ function TaskForm({ initial }: { initial: TaskInput }) {
             <Pressable
               key={icon}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              aria-checked={selected}
               onPress={() => set({ icon })}
               style={[styles.iconCell, { borderColor: selected ? p.primary : 'transparent', backgroundColor: p.card }]}>
               <T style={styles.iconText}>{icon}</T>

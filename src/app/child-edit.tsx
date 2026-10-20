@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
+import { BackLink } from '@/components/BackLink';
 import { Banner } from '@/components/Banner';
 import { Button } from '@/components/Button';
 import { ChildForm } from '@/components/ChildForm';
@@ -21,9 +22,12 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace('/kids
 export default function ChildEdit() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const who = useWho();
   const kids = useChildren();
 
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (who.data && who.data.member?.role !== 'parent') return <Redirect href="/" />;
   if (!id) {
@@ -72,6 +76,7 @@ function ChildEditForm({ id, initial }: { id: string | null; initial: NewChild }
 
   return (
     <Screen>
+      <BackLink fallback="/kids" />
       <T v="title">{id ? t.childEdit.titleEdit : t.childEdit.titleNew}</T>
       <ChildForm value={value} onChange={setValue} errors={errors} testPrefix="edit" />
       <Banner text={error} />

@@ -5,7 +5,7 @@ import { Nunito_400Regular } from '@expo-google-fonts/nunito/400Regular';
 import { Nunito_600SemiBold } from '@expo-google-fonts/nunito/600SemiBold';
 import { Nunito_700Bold } from '@expo-google-fonts/nunito/700Bold';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -16,11 +16,25 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
+import { toApiError } from '@/lib/api';
 import { startSession } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { usePalette } from '@/theme';
 
-const queryClient = new QueryClient({
+// The phone was unlinked, the family deleted, or a parent's role changed
+// while the app was open: check the account again, so the app moves to the
+// right screen instead of showing the same error with «Попробовать снова».
+const MEMBERSHIP_ERRORS = ['not_member', 'parent_only', 'child_only'];
+
+const queryClient: QueryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (e, query) => {
+      if (query.queryKey[0] === 'whoami') return;
+      if (MEMBERSHIP_ERRORS.includes(toApiError(e).key)) {
+        void queryClient.invalidateQueries({ queryKey: ['whoami'] });
+      }
+    },
+  }),
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: true },
     // Offline taps must fail with "нет связи" at once, not wait silently and

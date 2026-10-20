@@ -8,11 +8,7 @@ type Props = { label: string; hint?: string; value: boolean; onChange: (v: boole
 export function SwitchRow({ label, hint, value, onChange, testID }: Props) {
   const p = usePalette();
   return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
-      onPress={() => onChange(!value)}
-      style={styles.row}>
+    <Pressable accessibilityRole="switch" aria-checked={value} onPress={() => onChange(!value)} style={styles.row}>
       <View style={styles.texts}>
         <T v="bodyBold">{label}</T>
         {hint ? (

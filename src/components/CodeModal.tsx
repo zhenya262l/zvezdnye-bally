@@ -42,11 +42,15 @@ export function CodeModal({ title, steps, icon, doneText, request, isDone, onDon
   const [now, setNow] = useState(() => Date.now());
   const [done, setDone] = useState(false);
   const issuedAt = useRef<number | null>(null);
+  // Counted from the moment the code arrived on this phone, not from the
+  // server's clock: a phone with the wrong time still shows 10 minutes.
+  const [deadline, setDeadline] = useState(0);
 
   const fetchCode = () =>
     request().then(
       (fresh) => {
         issuedAt.current = new Date(fresh.expires_at).getTime() - CODE_LIFETIME_MS;
+        setDeadline(Date.now() + CODE_LIFETIME_MS);
         setCode(fresh);
         setNow(Date.now());
       },
@@ -82,7 +86,7 @@ export function CodeModal({ title, steps, icon, doneText, request, isDone, onDon
     void fetchCode();
   }
 
-  const left = code ? new Date(code.expires_at).getTime() - now : 0;
+  const left = code ? deadline - now : 0;
   const expired = !!code && left <= 0;
 
   return (

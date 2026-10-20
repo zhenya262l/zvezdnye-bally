@@ -3,12 +3,13 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BackLink } from '@/components/BackLink';
+import { BackLink, NotFound } from '@/components/BackLink';
 import { Button } from '@/components/Button';
+import { ButtonRow } from '@/components/ButtonRow';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { Loading } from '@/components/Loading';
+import { LoadError, Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
@@ -24,6 +25,8 @@ export default function Tasks() {
   const p = usePalette();
   const qc = useQueryClient();
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const who = useWho();
   const params = useLocalSearchParams<{ child?: string }>();
   const kids = useChildren();
@@ -36,9 +39,19 @@ export default function Tasks() {
   const [msg, setMsg] = useState<ToastMsg>(null);
   const hideMsg = useCallback(() => setMsg(null), []);
 
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (who.data && who.data.member?.role !== 'parent') return <Redirect href="/" />;
-  if (kids.isPending || sections.isPending || !childId) return <Loading />;
+  if (kids.isPending || sections.isPending) return <Loading />;
+  if (kids.isError) return <LoadError text={errorText(kids.error)} onRetry={() => kids.refetch()} />;
+  if (sections.isError) return <LoadError text={errorText(sections.error)} onRetry={() => sections.refetch()} />;
+  if (!childId) {
+    return (
+      <Screen>
+        <NotFound fallback="/settings" />
+      </Screen>
+    );
+  }
 
   const child = kids.data?.find((c) => c.id === childId);
   const list = tasks.data ?? [];
@@ -95,27 +108,28 @@ export default function Tasks() {
           <T v="small" muted>
             {t.tasks.checkAllHint}
           </T>
-          <View style={styles.toggles}>
+          <ButtonRow>
             {([true, false] as const).map((on) => (
-              <View key={String(on)} style={styles.flex}>
-                <Button
-                  testID={on ? 'check-all-on' : 'check-all-off'}
-                  title={on ? t.tasks.checkAllOn : t.tasks.checkAllOff}
-                  variant="secondary"
-                  disabled={busy}
-                  onPress={() =>
-                    void run(async () => {
-                      const n = await api.setChildTasksApproval(childId, on);
-                      setMsg({ text: t.tasks.checkAllDone(on, n), kind: 'success' });
-                    })
-                  }
-                />
-              </View>
+              <Button
+                key={String(on)}
+                testID={on ? 'check-all-on' : 'check-all-off'}
+                title={on ? t.tasks.checkAllOn : t.tasks.checkAllOff}
+                variant="secondary"
+                disabled={busy}
+                onPress={() =>
+                  void run(async () => {
+                    const n = await api.setChildTasksApproval(childId, on);
+                    setMsg({ text: t.tasks.checkAllDone(on, n), kind: 'success' });
+                  })
+                }
+              />
             ))}
-          </View>
+          </ButtonRow>
         </Card>
 
-        {(sections.data ?? []).map((s) => {
+        {tasks.isError ? <LoadError text={errorText(tasks.error)} onRetry={() => tasks.refetch()} /> : null}
+        {tasks.isPending ? <Loading /> : null}
+        {(tasks.isSuccess ? (sections.data ?? []) : []).map((s) => {
           const inSection = list.filter((x) => x.section_id === s.id);
           return (
             <Card key={s.id} title={s.name} accent={s.color}>
@@ -147,14 +161,16 @@ export default function Tasks() {
                     </Pressable>
                     <View style={styles.arrows}>
                       <Pressable
-                        accessibilityLabel={t.tasks.up}
+                        accessibilityRole="button"
+                        accessibilityLabel={t.tasks.up(task.title)}
                         disabled={i === 0 || busy}
                         onPress={() => move(inSection, i, -1)}
                         style={[styles.arrow, { backgroundColor: p.cardAlt, opacity: i === 0 ? 0.3 : 1 }]}>
                         <T v="bodyBold">↑</T>
                       </Pressable>
                       <Pressable
-                        accessibilityLabel={t.tasks.down}
+                        accessibilityRole="button"
+                        accessibilityLabel={t.tasks.down(task.title)}
                         disabled={i === inSection.length - 1 || busy}
                         onPress={() => move(inSection, i, 1)}
                         style={[

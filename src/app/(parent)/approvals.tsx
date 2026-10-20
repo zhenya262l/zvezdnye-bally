@@ -12,7 +12,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
 import { api, errorText, type QueueItem } from '@/lib/api';
-import { todayISO } from '@/lib/dates';
+import { formatTime, todayISO } from '@/lib/dates';
 import { useParentQueue } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
@@ -55,8 +55,12 @@ export default function Approvals() {
     try {
       const r = await api.approveRequest(item.id, approve);
       if (!r.changed && !r.decided_by_me) {
+        // The other parent was faster: say who decided, what and when.
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name ?? '';
         setInfo({
-          text: t.approvals.alreadyDecided(r.decided_by_name ?? ''),
+          text:
+            r.status === 'rejected' ? t.approvals.alreadyRejected(name, time) : t.approvals.alreadySigned(name, time),
           kind: 'info',
         });
       }

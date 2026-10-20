@@ -35,7 +35,7 @@ export function TaskRow({ task, busy, onDone, rowRef, error }: Props) {
   } else if (task.status === 'rejected') {
     action = (
       <View style={[styles.badge, { backgroundColor: p.cardAlt }]}>
-        <T v="small" muted center>
+        <T v="body" muted center>
           {t.child.rejected}
         </T>
       </View>
@@ -80,7 +80,10 @@ export function TaskRow({ task, busy, onDone, rowRef, error }: Props) {
           {task.title}
         </T>
         <View style={[styles.points, { backgroundColor: brand.sun }]}>
-          <T v="bodyBold" color={brand.ocean}>{`+${task.points}`}</T>
+          {/* Once credited: what she got, even if the parent changed the points later. */}
+          <T
+            v="bodyBold"
+            color={brand.ocean}>{`+${task.status === 'approved' ? (task.earned ?? task.points) : task.points}`}</T>
         </View>
       </View>
       {action}

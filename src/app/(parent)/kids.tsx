@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
 import { PhoneIcon, StarIcon } from '@/components/art/Icons';
+import { Banner } from '@/components/Banner';
 import { BonusModal } from '@/components/BonusModal';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -43,6 +44,7 @@ export default function Kids() {
   return (
     <Screen inTabs>
       <T v="title">{t.kids.title}</T>
+      {members.isError ? <Banner text={errorText(members.error)} /> : null}
       {kids.data.map((c) => (
         <Card key={c.id} title={c.name} accent={c.color}>
           <View style={styles.row}>
@@ -51,12 +53,15 @@ export default function Kids() {
               <T v="big">{formatAge(c.birth_date)}</T>
               <Balance childId={c.id} />
               <T muted>{t.kids.birthday(formatDayMonth(c.birth_date))}</T>
-              <T
-                v={phones(c.id) > 0 ? 'bodyBold' : 'small'}
-                color={phones(c.id) > 0 ? p.successText : p.textMuted}
-                testID={`phones-${c.id}`}>
-                {t.kids.phones(phones(c.id))}
-              </T>
+              {/* Unknown until the list loads: no «не подключён» on a slow network. */}
+              {members.isSuccess ? (
+                <T
+                  v={phones(c.id) > 0 ? 'bodyBold' : 'small'}
+                  color={phones(c.id) > 0 ? p.successText : p.textMuted}
+                  testID={`phones-${c.id}`}>
+                  {t.kids.phones(phones(c.id))}
+                </T>
+              ) : null}
             </View>
           </View>
           <Button
@@ -71,7 +76,7 @@ export default function Kids() {
             variant="secondary"
             onPress={() => router.push({ pathname: '/history', params: { child: c.id } })}
           />
-          {phones(c.id) === 0 ? (
+          {!members.isSuccess ? null : phones(c.id) === 0 ? (
             <Button
               testID={`connect-${c.id}`}
               title={t.kids.connectPhone(c.name)}

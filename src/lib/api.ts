@@ -169,8 +169,10 @@ export function toApiError(e: unknown): ApiError {
   if (e instanceof AuthError || err?.code) {
     switch (err?.code) {
       case 'over_email_send_rate_limit':
-      case 'over_request_rate_limit':
         return new ApiError('emailRateLimit', message);
+      // Also returned for anonymous sign-in (child's phone) and code checks.
+      case 'over_request_rate_limit':
+        return new ApiError('requestRateLimit', message);
       case 'email_address_not_authorized':
         return new ApiError('emailNotAuthorized', message);
       case 'email_address_invalid':
@@ -247,6 +249,7 @@ export const api = {
       status: string;
       points?: number;
       decided_by_name?: string | null;
+      decided_at?: string | null;
       decided_by_me?: boolean;
     }>('approve_request', {
       p_request_id: id,
@@ -336,6 +339,8 @@ export const api = {
   myFamilyAccess: () => rpc<FamilyAccess>('my_family_access'),
 
   currentConsent: () => rpc<Consent>('current_consent'),
+
+  withdrawFamilyRequest: () => rpc<void>('withdraw_family_request'),
 
   requestFamilyAccess: (displayName: string, consentVersion: number) =>
     rpc<{ status: FamilyAccess['status'] }>('request_family_access', {

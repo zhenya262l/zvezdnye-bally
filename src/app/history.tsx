@@ -11,7 +11,7 @@ import { Chip } from '@/components/Chip';
 import { Field } from '@/components/Field';
 import { Formula } from '@/components/Formula';
 import { LedgerList } from '@/components/LedgerList';
-import { Loading } from '@/components/Loading';
+import { LoadError, Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { Stepper } from '@/components/Stepper';
 import { T } from '@/components/T';
@@ -27,6 +27,8 @@ export default function History() {
   const { child: childId } = useLocalSearchParams<{ child?: string }>();
   const qc = useQueryClient();
   const uid = useSession((s) => s.session?.user.id);
+  // A reload or a link opened directly: wait for the saved sign-in.
+  const ready = useSession((s) => s.ready);
   const who = useWho();
   const kids = useChildren();
   const ledger = useLedger(childId);
@@ -39,9 +41,11 @@ export default function History() {
   const [msg, setMsg] = useState<ToastMsg>(null);
   const hideMsg = useCallback(() => setMsg(null), []);
 
+  if (!ready) return <Loading />;
   if (!uid) return <Redirect href="/" />;
   if (who.data && who.data.member?.role !== 'parent') return <Redirect href="/" />;
   if (kids.isPending) return <Loading />;
+  if (kids.isError) return <LoadError text={errorText(kids.error)} onRetry={() => kids.refetch()} />;
   const child = kids.data?.find((c) => c.id === childId);
   if (!child) {
     return (

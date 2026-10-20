@@ -7,6 +7,7 @@ import { Banner } from '@/components/Banner';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ConsentBox } from '@/components/ConsentBox';
 import { Field } from '@/components/Field';
 import { LoadError, Loading } from '@/components/Loading';
@@ -31,14 +32,21 @@ export default function FamilyRequest() {
   const consent = useConsent();
   const [role, setRole] = useState<'mom' | 'dad' | 'other'>('mom');
   const [otherName, setOtherName] = useState('');
-  const [agreed, setAgreed] = useState(false);
+  // The tick belongs to the text the parent read. If a new edition arrives
+  // while the screen is open, the tick is cleared.
+  const [agreedId, setAgreedId] = useState<number | null>(null);
+  const agreed = !!consent.data && agreedId === consent.data.id;
+  const setAgreed = (v: boolean) => setAgreedId(v && consent.data ? consent.data.id : null);
   const [busy, setBusy] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; kind: 'error' | 'info' } | null>(null);
 
   if (!session) return <Redirect href="/" />;
   if (who.isPending || access.isPending || consent.isPending) return <Loading />;
   if (who.data?.member || who.data?.is_anonymous) return <Redirect href="/" />;
   if (access.isError) return <LoadError text={errorText(access.error)} onRetry={() => access.refetch()} />;
+  if (consent.isError) return <LoadError text={errorText(consent.error)} onRetry={() => consent.refetch()} />;
   if (access.data.is_admin || access.data.status === 'approved') return <Redirect href="/family-setup" />;
 
   const displayName = role === 'mom' ? t.setup.mom : role === 'dad' ? t.setup.dad : otherName.trim();
@@ -63,7 +71,8 @@ export default function FamilyRequest() {
   async function checkAgain() {
     setMsg(null);
     const r = await access.refetch();
-    if (r.data?.status === 'pending') setMsg({ text: t.access.stillPending, kind: 'info' });
+    if (r.isError) setMsg({ text: errorText(r.error), kind: 'error' });
+    else if (r.data?.status === 'pending') setMsg({ text: t.access.stillPending, kind: 'info' });
   }
 
   async function signOut() {
@@ -72,10 +81,57 @@ export default function FamilyRequest() {
     router.replace('/welcome');
   }
 
+  async function withdraw() {
+    setBusy(true);
+    setWithdrawError(null);
+    try {
+      await api.withdrawFamilyRequest();
+      setWithdrawOpen(false);
+      setAgreedId(null);
+      await qc.invalidateQueries({ queryKey: ['access'] });
+    } catch (e) {
+      setWithdrawError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const invite = (
+    <Button
+      testID="have-invite"
+      title={t.setup.haveInvite}
+      subtitle={t.setup.haveInviteHint}
+      variant="secondary"
+      onPress={() => router.push('/join-family')}
+    />
+  );
+
   const bottom = (
     <>
       <Banner text={msg?.text} kind={msg?.kind} />
+      {access.data.status !== 'none' ? (
+        <Button
+          testID="access-withdraw"
+          title={t.access.withdraw}
+          variant="ghost"
+          onPress={() => setWithdrawOpen(true)}
+        />
+      ) : null}
       <Button title={t.family.signOut} variant="ghost" onPress={signOut} />
+      <ConfirmModal
+        visible={withdrawOpen}
+        title={t.access.withdrawTitle}
+        text={t.access.withdrawText}
+        confirmTitle={t.access.withdrawConfirm}
+        danger
+        busy={busy}
+        error={withdrawError}
+        onCancel={() => {
+          setWithdrawOpen(false);
+          setWithdrawError(null);
+        }}
+        onConfirm={withdraw}
+      />
     </>
   );
 
@@ -87,6 +143,7 @@ export default function FamilyRequest() {
           {t.access.pendingText(access.data.requested_at ? formatDateTime(access.data.requested_at) : '')}
         </T>
         <Button testID="access-check" title={t.access.checkAgain} onPress={checkAgain} />
+        {invite}
         {bottom}
       </Screen>
     );
@@ -97,6 +154,7 @@ export default function FamilyRequest() {
       <Screen>
         <T v="title">{t.access.declinedTitle}</T>
         <T testID="access-declined">{t.access.declinedText}</T>
+        {invite}
         {bottom}
       </Screen>
     );
@@ -105,13 +163,7 @@ export default function FamilyRequest() {
   return (
     <Screen>
       <T v="title">{t.access.title}</T>
-      <Button
-        testID="have-invite"
-        title={t.setup.haveInvite}
-        subtitle={t.setup.haveInviteHint}
-        variant="secondary"
-        onPress={() => router.push('/join-family')}
-      />
+      {invite}
       {!consent.data ? (
         <T testID="access-closed">{t.access.closed}</T>
       ) : (

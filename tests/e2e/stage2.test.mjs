@@ -215,7 +215,8 @@ test('no-check tasks, praise, signatures within 5 seconds, bonus, editor, second
   await C.getByLabel('Сделала: Полила цветы').click();
   const flowers = P.locator('[data-testid^="queue-"]').filter({ hasText: 'Полила цветы' });
   await flowers.getByText('Не засчитать').click({ timeout: 10000 });
-  await C.getByText('✓ Сделано: 1').waitFor({ timeout: 6000 });
+  // «Не засчитано» is not counted as done.
+  await C.getByText('Не засчитано: 1', { exact: true }).waitFor({ timeout: 6000 });
   await openDone(C, 'Дом и помощь');
   await C.getByText('Пока не засчитано — завтра получится').waitFor();
   assert.equal(await leftOf(C), 6);
@@ -359,6 +360,9 @@ test('a new family: request with consent, owner approves, then the family is cre
     await card.waitFor({ timeout: 35000 });
     await shot(O, '32-owner-requests');
     await card.getByText('Одобрить').click();
+    // Decided requests fold away under «Решённые заявки».
+    await card.waitFor({ state: 'detached', timeout: 10000 });
+    await O.getByTestId('requests-decided').click();
     await card.getByText(/Одобрено/).waitFor({ timeout: 10000 });
 
     // The new parent can now create the family.

@@ -4,9 +4,14 @@ export const FAMILY_TZ = 'Europe/Minsk';
 
 /** Today's date (YYYY-MM-DD) in the family time zone. */
 export function todayISO(tz: string = FAMILY_TZ): string {
+  return dateISO(new Date().toISOString(), tz);
+}
+
+/** The date (YYYY-MM-DD) of a server timestamp in the family time zone. */
+export function dateISO(ts: string, tz: string = FAMILY_TZ): string {
   // en-CA formats as YYYY-MM-DD.
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
-    new Date(),
+    new Date(ts),
   );
 }
 

@@ -88,7 +88,7 @@ export default function FamilySetup() {
       <Pressable
         key={key}
         accessibilityRole="radio"
-        accessibilityState={{ selected }}
+        aria-checked={selected}
         onPress={() => setRole(key)}
         style={[
           styles.chip,

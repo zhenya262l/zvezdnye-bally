@@ -19,6 +19,10 @@ export function TabsShell({ role, tabs }: { role: 'parent' | 'child'; tabs: TabD
   const ready = useSession((s) => s.ready);
   const who = useWho();
 
+  // Larger iPhone text makes tab labels taller: the bar grows with them.
+  const labelScale = Math.min(scale, 1.25);
+  const extra = Math.round((labelScale - 1) * 64);
+
   if (!ready) return <Loading />;
   if (!session) return <Redirect href="/" />;
   if (who.isPending) return <Loading />;
@@ -33,11 +37,11 @@ export function TabsShell({ role, tabs }: { role: 'parent' | 'child'; tabs: TabD
         tabBarStyle: {
           backgroundColor: p.tabBar,
           borderTopColor: p.border,
-          height: 64 + insets.bottom,
+          height: 64 + extra + insets.bottom,
           paddingBottom: insets.bottom + 6,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontFamily: fonts.bodyBold, fontSize: 12 * Math.min(scale, 1.25) },
+        tabBarLabelStyle: { fontFamily: fonts.bodyBold, fontSize: 12 * labelScale, lineHeight: 16 * labelScale },
         sceneStyle: { backgroundColor: p.bg },
       }}>
       {tabs.map((tab) => (

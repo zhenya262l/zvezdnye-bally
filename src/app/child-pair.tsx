@@ -42,9 +42,16 @@ export default function ChildPair() {
       try {
         await tryPair(c);
       } catch (e) {
-        // A phone that was unlinked keeps a stale session: start a fresh one and retry once.
         const key = toApiError(e).key;
-        if (key === 'generic' || key === 'not_authenticated' || key === 'already_paired') {
+        if (key === 'already_paired') {
+          // This phone is already connected (its sign-in came back late):
+          // keep it and open the app, never sign it out.
+          await qc.invalidateQueries({ queryKey: ['whoami'] });
+          router.replace('/');
+          return;
+        }
+        // A phone that was unlinked keeps a stale session: start a fresh one and retry once.
+        if (key === 'generic' || key === 'not_authenticated') {
           await supabase.auth.signOut();
           await tryPair(c);
         } else {

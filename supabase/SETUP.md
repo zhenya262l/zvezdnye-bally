@@ -4,7 +4,7 @@
 
 1. **New project.** Название `zvezdnye-bally`, регион Central EU (Frankfurt), тариф Free. Галочку «Automatically expose new tables» снять.
 2. **SQL Editor → New query.** Вставить файл `migrations/20261015000100_stage1_core.sql` целиком → **Run** → в окне предупреждения **Run query**. Ожидаемый ответ: «Success. No rows returned».
-   Для этапа 2 так же выполнить `migrations/20261017000100_stage2_tasks.sql`, затем `migrations/20261019000100_family_access.sql`. На рабочем проекте ещё не выполнено: ждёт проверки этапа 1 на iPhone.
+   Для этапа 2 так же выполнить `migrations/20261017000100_stage2_tasks.sql`, затем `migrations/20261019000100_family_access.sql`, затем `migrations/20261021000100_review_fixes.sql`. На рабочем проекте первые три выполнены 20.10.2026, последняя ждёт подтверждения владельца.
    После этого назначить владельца приложения одной командой в SQL Editor (почту владельца вписать на месте, в код она не попадает):
    `insert into private.app_admins (user_id) select id from auth.users where email = '<почта владельца>';`
    Затем владелец сохраняет текст согласия в приложении: «Семья» → «Новые семьи» → «Текст согласия». Без него второй родитель не сможет присоединиться.

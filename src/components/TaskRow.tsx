@@ -89,7 +89,7 @@ export function TaskRow({ task, busy, onDone, rowRef, error }: Props) {
       {action}
       {task.praise ? (
         <T v="bodyBold" color={p.text} testID={`praise-${task.id}`}>
-          {`💬 ${t.child.praiseFrom(task.praised_by_name ?? '', task.praise)}`}
+          {`💬 ${t.child.praiseFrom(task.praised_by_name || t.common.formerParent, task.praise)}`}
         </T>
       ) : null}
       {error ? (

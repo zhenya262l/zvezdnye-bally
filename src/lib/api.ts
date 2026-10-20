@@ -18,6 +18,8 @@ export type Who = {
   is_anonymous: boolean;
   email: string | null;
   member: Member | null;
+  /** A parent has to accept a newer edition of the consent text first. */
+  needs_consent?: boolean;
 };
 
 export type Child = {
@@ -228,6 +230,11 @@ export const api = {
 
   deleteFamily: () => rpc<null>('delete_family'),
 
+  /** A parent leaves the family while the other parent stays. */
+  leaveFamily: () => rpc<null>('leave_family'),
+
+  acceptConsent: (version: number) => rpc<null>('accept_consent', { p_version: version }),
+
   listChildren: async (): Promise<Child[]> => {
     const { data, error } = await supabase.from('children').select('*').order('sort_order').order('created_at');
     if (error) throw toApiError(error);
@@ -392,5 +399,9 @@ export const auth = {
   },
   signOut: async () => {
     await supabase.auth.signOut();
+  },
+  /** After the account was deleted on the server: forget it on this phone only. */
+  forgetAccount: async () => {
+    await supabase.auth.signOut({ scope: 'local' });
   },
 };

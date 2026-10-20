@@ -86,9 +86,11 @@ export default function FamilyRequest() {
     setWithdrawError(null);
     try {
       await api.withdrawFamilyRequest();
+      // The sign-in account is deleted with the request: forget it here.
       setWithdrawOpen(false);
-      setAgreedId(null);
-      await qc.invalidateQueries({ queryKey: ['access'] });
+      await auth.forgetAccount();
+      qc.clear();
+      router.replace('/welcome');
     } catch (e) {
       setWithdrawError(errorText(e));
     } finally {

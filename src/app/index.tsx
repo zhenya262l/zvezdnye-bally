@@ -26,12 +26,15 @@ export default function Gate() {
     );
   }
   if (!ready) return <Loading />;
-  if (!session && restoring) return <LoadError kind="info" text={t.gate.restoring} onRetry={() => void retryRestore()} />;
+  if (!session && restoring)
+    return <LoadError kind="info" text={t.gate.restoring} onRetry={() => void retryRestore()} />;
   if (!session) return <Redirect href="/welcome" />;
   if (who.isPending) return <Loading />;
   if (who.isError) return <LoadError text={errorText(who.error)} onRetry={() => who.refetch()} />;
 
   const m = who.data.member;
   if (!m) return <Redirect href={who.data.is_anonymous ? '/child-pair' : '/family-setup'} />;
+  // A new edition of the consent text comes first (owner's decision 20.10.2026).
+  if (m.role === 'parent' && who.data.needs_consent) return <Redirect href="/consent-update" />;
   return <Redirect href={m.role === 'parent' ? '/approvals' : '/today'} />;
 }

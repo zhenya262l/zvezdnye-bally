@@ -37,8 +37,9 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
   if (item.status !== 'pending' && item.decided_at) {
     const time = formatTime(item.decided_at, tz);
     if (item.auto_approved) decided = t.approvals.autoSigned(time);
-    else if (item.status === 'approved') decided = t.approvals.signedBy(item.decided_by_name ?? '', time);
-    else decided = t.approvals.rejectedBy(item.decided_by_name ?? '', time);
+    else if (item.status === 'approved')
+      decided = t.approvals.signedBy(item.decided_by_name || t.common.formerParent, time);
+    else decided = t.approvals.rejectedBy(item.decided_by_name || t.common.formerParent, time);
   }
 
   return (
@@ -85,7 +86,7 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
       ) : null}
       {item.status === 'approved' && item.praise ? (
         <T v="small" testID={`praised-${item.id}`}>
-          {`💬 ${t.approvals.praised(item.praised_by_name ?? '', item.praise)}`}
+          {`💬 ${t.approvals.praised(item.praised_by_name || t.common.formerParent, item.praise)}`}
         </T>
       ) : item.status === 'approved' && onPraise && !praiseOpen ? (
         <View style={styles.praise}>

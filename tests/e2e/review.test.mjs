@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 
-import { consentId, familyWithKids, newParent, pairedChild } from '../db/helpers.mjs';
+import { consentId, familyWithKids, newParent, pairedChild, sql } from '../db/helpers.mjs';
 
 const S = JSON.parse(
   fs.readFileSync(process.env.DEVSTACK_STATE ?? path.join(os.homedir(), '.zb-devstack/state.json'), 'utf8'),
@@ -150,8 +150,60 @@ test('a request for a new family can be withdrawn', async () => {
   await seen(page, 'Отозвать заявку?').waitFor();
   await shot(page, '03-withdraw-confirm');
   await page.getByText('Отозвать', { exact: true }).filter({ visible: true }).last().click();
-  // Back to the empty form: the consent has to be given again.
-  await page.getByTestId('access-send').waitFor({ timeout: 10000 });
-  assert.equal(await page.getByTestId('access-send').getAttribute('aria-disabled'), 'true');
+  // The request, the consent and the sign-in account are deleted.
+  await seen(page, 'Кто ты?').waitFor({ timeout: 10000 });
+  const left = await sql('select 1 from auth.users where id = $1', [ann.userId]);
+  assert.equal(left.rowCount, 0);
+  await ctx.close();
+});
+
+test('a new consent edition is shown first; the parent accepts it', async () => {
+  const p = await familyWithKids('reconsent-ui');
+  const owner = await newParent('reconsent-ui-owner');
+  await sql('insert into private.app_admins (user_id) values ($1)', [owner.userId]);
+  try {
+    const v2 = await owner.c.rpc('save_consent_version', {
+      p_body: `Новая редакция согласия для проверки на телефоне ${Date.now()}. Текст не короче пятидесяти знаков.`,
+    });
+    assert.equal(v2.error, null);
+    const { ctx, page } = await phone(await sessionOf(p.c));
+    await page.goto(APP);
+    await seen(page, 'Обновился текст согласия').waitFor({ timeout: 15000 });
+    assert.equal(await page.getByTestId('consent-accept').getAttribute('aria-disabled'), 'true', 'tick first');
+    // Tabs are not reachable before accepting.
+    await page.goto(`${APP}kids`);
+    await seen(page, 'Обновился текст согласия').waitFor({ timeout: 15000 });
+    await shot(page, '04-consent-update');
+    await page.getByTestId('consent-check').filter({ visible: true }).click();
+    await page.getByTestId('consent-accept').click();
+    await seen(page, 'Ждут подписи').waitFor({ timeout: 15000 });
+    const rec = await sql('select consent_version from public.members where user_id = $1', [p.userId]);
+    assert.equal(rec.rows[0].consent_version, v2.data);
+    await ctx.close();
+  } finally {
+    await sql('delete from private.app_admins where user_id = $1', [owner.userId]);
+  }
+});
+
+test('the second parent leaves the family; the family stays', async () => {
+  const v = await consentId();
+  const p = await familyWithKids('leave-ui');
+  const inv = await p.c.rpc('create_parent_invite');
+  const dad = await newParent('leave-ui-dad');
+  const j = await dad.c.rpc('join_family', { p_code: inv.data.code, p_display_name: 'Папа', p_consent_version: v });
+  assert.equal(j.data.ok, true);
+
+  const { ctx, page } = await phone(await sessionOf(dad.c));
+  await page.goto(`${APP}family`);
+  await page.getByTestId('invite-full').waitFor({ timeout: 15000 });
+  assert.equal(await page.getByTestId('invite-parent').count(), 0, 'no invite with two parents');
+  await page.getByTestId('leave-family').click();
+  await seen(page, 'Выйти из семьи?').waitFor();
+  await page.getByText('Выйти из семьи', { exact: true }).filter({ visible: true }).last().click();
+  await seen(page, 'Кто ты?').waitFor({ timeout: 15000 });
+  const gone = await sql('select 1 from auth.users where id = $1', [dad.userId]);
+  assert.equal(gone.rowCount, 0, 'the account and email are deleted');
+  const kids = await sql('select count(*)::int n from public.children where family_id = $1', [p.familyId]);
+  assert.equal(kids.rows[0].n, 2, 'the family stays');
   await ctx.close();
 });

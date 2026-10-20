@@ -57,7 +57,7 @@ export default function Approvals() {
       if (!r.changed && !r.decided_by_me) {
         // The other parent was faster: say who decided, what and when.
         const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
-        const name = r.decided_by_name ?? '';
+        const name = r.decided_by_name || t.common.formerParent;
         setInfo({
           text:
             r.status === 'rejected' ? t.approvals.alreadyRejected(name, time) : t.approvals.alreadySigned(name, time),

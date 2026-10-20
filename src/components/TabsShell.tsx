@@ -27,6 +27,7 @@ export function TabsShell({ role, tabs }: { role: 'parent' | 'child'; tabs: TabD
   if (!session) return <Redirect href="/" />;
   if (who.isPending) return <Loading />;
   if (who.data?.member?.role !== role) return <Redirect href="/" />;
+  if (role === 'parent' && who.data.needs_consent) return <Redirect href="/consent-update" />;
 
   return (
     <Tabs

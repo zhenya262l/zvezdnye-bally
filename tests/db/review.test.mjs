@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 
 import { consentId, familyWithKids, newDevice, newParent, pairedChild, sql } from './helpers.mjs';
 
+const userExists = async (id) => (await sql('select 1 from auth.users where id = $1', [id])).rowCount === 1;
+
 const TASK = 'Заправила постель'; // daily starter task, 2 points, no time window
 
 async function taskOf(client, childId, title = TASK) {
@@ -99,9 +101,9 @@ test('a request can be withdrawn; joining a family by code removes it', async ()
   await ann.c.rpc('request_family_access', { p_display_name: 'Аня', p_consent_version: v });
   assert.equal((await ann.c.rpc('my_family_access')).data.status, 'pending');
   assert.equal((await ann.c.rpc('withdraw_family_request')).error, null);
-  assert.equal((await ann.c.rpc('my_family_access')).data.status, 'none');
   const left = await sql('select count(*)::int n from public.family_requests where user_id = $1', [ann.userId]);
   assert.equal(left.rows[0].n, 0, 'email, name and consent are removed');
+  assert.equal(await userExists(ann.userId), false, 'the sign-in account is deleted too');
 
   // A person who first asked for a new family, then joined by invite code.
   const p = await familyWithKids('joinreq');
@@ -114,4 +116,82 @@ test('a request can be withdrawn; joining a family by code removes it', async ()
   assert.equal(req.rows[0].n, 0, 'the request is gone once the consent is kept with the member');
   const no = await dad.c.rpc('withdraw_family_request');
   assert.match(no.error.message, /already_in_family/);
+});
+
+test('a parent leaves the family; the last parent cannot', async () => {
+  const v = await consentId();
+  const p = await familyWithKids('leave');
+  const inv = await p.c.rpc('create_parent_invite');
+  const dad = await newParent('leave-dad');
+  const j = await dad.c.rpc('join_family', { p_code: inv.data.code, p_display_name: 'Папа', p_consent_version: v });
+  assert.equal(j.data.ok, true);
+
+  assert.equal((await dad.c.rpc('leave_family')).error, null);
+  const parents = await sql(`select count(*)::int n from public.members where family_id = $1 and role = 'parent'`, [
+    p.familyId,
+  ]);
+  assert.equal(parents.rows[0].n, 1, 'the family stays with one parent');
+  assert.equal(await userExists(dad.userId), false, 'the leaving parent\'s account and email are deleted');
+  const kids = await sql('select count(*)::int n from public.children where family_id = $1', [p.familyId]);
+  assert.equal(kids.rows[0].n, 2, 'children and history stay');
+  const audit = await sql(
+    `select new_value, old_value from public.settings_audit where family_id = $1 and entity = 'member' and action = 'delete'`,
+    [p.familyId],
+  );
+  assert.deepEqual(audit.rows[0].old_value, { role: 'parent' }, 'only the fact is kept, without a name');
+
+  const last = await p.c.rpc('leave_family');
+  assert.match(last.error.message, /last_parent/);
+  // A new invite works again after the second parent left.
+  assert.equal((await p.c.rpc('create_parent_invite')).error, null);
+});
+
+test('deleting the family deletes parents\' accounts, but not the owner\'s', async () => {
+  const v = await consentId();
+  const p = await familyWithKids('wipe');
+  const inv = await p.c.rpc('create_parent_invite');
+  const dad = await newParent('wipe-dad');
+  await dad.c.rpc('join_family', { p_code: inv.data.code, p_display_name: 'Папа', p_consent_version: v });
+  assert.equal((await p.c.rpc('delete_family')).error, null);
+  assert.equal(await userExists(p.userId), false);
+  assert.equal(await userExists(dad.userId), false);
+
+  const owner = await newParent('wipe-owner');
+  await sql('insert into private.app_admins (user_id) values ($1)', [owner.userId]);
+  try {
+    await owner.c.rpc('create_family', { p_display_name: 'Папа', p_children: [{ name: 'Тест', birth_date: '2017-03-14' }] });
+    assert.equal((await owner.c.rpc('delete_family')).error, null);
+    assert.equal(await userExists(owner.userId), true, 'the owner keeps the account to approve families');
+    assert.equal((await owner.c.rpc('my_family_access')).data.is_admin, true);
+  } finally {
+    await sql('delete from private.app_admins where user_id = $1', [owner.userId]);
+  }
+});
+
+test('a new consent edition must be accepted again by parents in a family', async () => {
+  const v1 = await consentId();
+  const p = await familyWithKids('reconsent');
+  assert.equal((await p.c.rpc('whoami')).data.needs_consent, false);
+
+  const owner = await newParent('reconsent-owner');
+  await sql('insert into private.app_admins (user_id) values ($1)', [owner.userId]);
+  try {
+    const v2 = await owner.c.rpc('save_consent_version', {
+      p_body: `Новая редакция согласия для проверки повторного согласия ${Date.now()}. Текст не короче пятидесяти знаков.`,
+    });
+    assert.ok(v2.data > v1);
+    assert.equal((await p.c.rpc('whoami')).data.needs_consent, true, 'the parent is asked again');
+    assert.equal((await owner.c.rpc('whoami')).data.needs_consent, false, 'the owner is not asked');
+    const d = await pairedChild(p, 0);
+    assert.equal((await d.c.rpc('whoami')).data.needs_consent, false, 'children are not asked');
+
+    const old = await p.c.rpc('accept_consent', { p_version: v1 });
+    assert.match(old.error.message, /consent_outdated/);
+    assert.equal((await p.c.rpc('accept_consent', { p_version: v2.data })).error, null);
+    assert.equal((await p.c.rpc('whoami')).data.needs_consent, false);
+    const rec = await sql('select consent_version from public.members where user_id = $1', [p.userId]);
+    assert.equal(rec.rows[0].consent_version, v2.data, 'the accepted edition is kept');
+  } finally {
+    await sql('delete from private.app_admins where user_id = $1', [owner.userId]);
+  }
 });

@@ -10,6 +10,15 @@
 --   5. The consent text is not given to children's phones.
 --   6. A person without a family can withdraw the request (and the consent).
 --   7. A request disappears once its author joins a family by invite code.
+--
+-- Owner's decisions of 20.10.2026 (withdrawal of consent):
+--   8. A parent can leave the family while another parent stays. Their member
+--      row, request and sign-in account (email) are deleted.
+--   9. Deleting the family also deletes the parents' sign-in accounts. The
+--      app owner's account stays: it approves new families.
+--  10. Withdrawing a request deletes the applicant's sign-in account too.
+--  11. A new consent edition must be accepted again by parents already in a
+--      family, at their next start of the app (the owner is not asked).
 
 -- ---------------------------------------------------------------------------
 -- 1. Parent queue
@@ -368,20 +377,137 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- 6. Withdrawing a request removes the email, the name and the consent
+-- 6, 10. Withdrawing a request removes the name, the consent and the email
 -- ---------------------------------------------------------------------------
 create or replace function public.withdraw_family_request()
 returns void
 language plpgsql security definer set search_path = ''
 as $$
+declare
+  v_uid uuid := auth.uid();
 begin
-  if auth.uid() is null then
+  if v_uid is null then
     raise exception 'not_authenticated';
   end if;
-  if exists (select 1 from public.members m where m.user_id = auth.uid()) then
+  if private.is_anonymous() then
+    raise exception 'parent_requires_email';
+  end if;
+  if exists (select 1 from public.members m where m.user_id = v_uid) then
     raise exception 'already_in_family';
   end if;
-  delete from public.family_requests r where r.user_id = auth.uid();
+  delete from public.family_requests r where r.user_id = v_uid;
+  if not private.is_admin() then
+    -- Sign-in sessions and identities go with the account.
+    delete from auth.users u where u.id = v_uid;
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 8. A parent leaves the family (withdraws own consent)
+-- ---------------------------------------------------------------------------
+create or replace function public.leave_family()
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid    uuid := auth.uid();
+  v_family uuid := private.require_parent();
+begin
+  perform 1 from public.families f where f.id = v_family for no key update;
+  if (select count(*) from public.members m where m.family_id = v_family and m.role = 'parent') < 2 then
+    -- The last parent withdraws consent by deleting the family.
+    raise exception 'last_parent';
+  end if;
+  -- Kept without a name: only that a parent left.
+  perform private.audit(v_family, 'member', null, 'delete', jsonb_build_object('role', 'parent'), null);
+  delete from public.members m where m.user_id = v_uid;
+  delete from public.family_requests r where r.user_id = v_uid;
+  if not private.is_admin() then
+    delete from auth.users u where u.id = v_uid;
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 9. Deleting the family deletes the parents' accounts too
+-- ---------------------------------------------------------------------------
+create or replace function public.delete_family()
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_family   uuid := private.require_parent();
+  v_children uuid[];
+  v_parents  uuid[];
+begin
+  select coalesce(array_agg(m.user_id) filter (where m.role = 'child'), '{}'),
+         coalesce(array_agg(m.user_id) filter (where m.role = 'parent'), '{}')
+    into v_children, v_parents
+    from public.members m where m.family_id = v_family;
+  delete from public.families f where f.id = v_family;
+  delete from auth.users u where u.id = any (v_children) and u.is_anonymous;
+  -- The app owner's account stays: it approves new families.
+  delete from auth.users u
+   where u.id = any (v_parents)
+     and not exists (select 1 from private.app_admins a where a.user_id = u.id);
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 11. A new consent edition for parents already in a family
+-- ---------------------------------------------------------------------------
+create or replace function public.whoami()
+returns jsonb
+language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'user_id', auth.uid(),
+    'is_anonymous', private.is_anonymous(),
+    'email', auth.jwt() ->> 'email',
+    'member', (
+      select jsonb_build_object(
+        'id', m.id,
+        'role', m.role,
+        'family_id', m.family_id,
+        'family_name', f.name,
+        'timezone', f.timezone,
+        'child_id', m.child_id,
+        'display_name', m.display_name
+      )
+      from public.members m
+      join public.families f on f.id = m.family_id
+      where m.user_id = auth.uid()
+    ),
+    -- A parent accepted an older edition (or none): the app shows the new
+    -- text before anything else. The owner is the operator and is not asked.
+    'needs_consent', coalesce((
+      select m.role = 'parent'
+             and not private.is_admin()
+             and coalesce(m.consent_version, 0) < coalesce((select max(c.id) from public.consent_versions c), 0)
+        from public.members m
+       where m.user_id = auth.uid()), false)
+  )
+$$;
+
+create or replace function public.accept_consent(p_version int)
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_family  uuid := private.require_parent();
+  v_current int := (select max(c.id) from public.consent_versions c);
+begin
+  if p_version is null then
+    raise exception 'consent_required';
+  end if;
+  if v_current is null or p_version <> v_current then
+    raise exception 'consent_outdated';
+  end if;
+  update public.members m
+     set consent_version = p_version, consent_at = now()
+   where m.user_id = auth.uid() and m.family_id = v_family;
+  perform private.audit(v_family, 'consent', null, 'update', null, jsonb_build_object('consent_version', p_version));
 end
 $$;
 
@@ -415,8 +541,16 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Privileges
 -- ---------------------------------------------------------------------------
-revoke execute on function public.withdraw_family_request() from public, anon;
-grant execute on function public.withdraw_family_request() to authenticated;
+revoke execute on function
+  public.withdraw_family_request(),
+  public.leave_family(),
+  public.accept_consent(int)
+from public, anon;
+grant execute on function
+  public.withdraw_family_request(),
+  public.leave_family(),
+  public.accept_consent(int)
+to authenticated;
 
 -- New function: let the API see it at once.
 notify pgrst, 'reload schema';

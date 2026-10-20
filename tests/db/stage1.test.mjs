@@ -312,6 +312,7 @@ test('parent deletes the family with all data', async () => {
   assert.equal(left.rows[0].n, 0);
   const anon = await db.query('select 1 from auth.users where id = $1', [d.userId]);
   assert.equal(anon.rowCount, 0);
-  const who = await p.c.rpc('whoami');
-  assert.equal(who.data.member, null, 'parent account remains and can start over');
+  // Owner's decision 20.10.2026: withdrawal deletes the parent's sign-in account too.
+  const parent = await db.query('select 1 from auth.users where id = $1', [p.userId]);
+  assert.equal(parent.rowCount, 0, 'the parent account and email are deleted');
 });

@@ -20,7 +20,12 @@ import { useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { brand, space, usePalette } from '@/theme';
 
-type Dialog = { kind: 'unlink'; member: MemberRow; name: string } | { kind: 'signout' } | { kind: 'delete' } | null;
+type Dialog =
+  | { kind: 'unlink'; member: MemberRow; name: string }
+  | { kind: 'signout' }
+  | { kind: 'leave' }
+  | { kind: 'delete' }
+  | null;
 
 export default function Family() {
   const p = usePalette();
@@ -122,6 +127,15 @@ export default function Family() {
       {access.data?.is_admin ? <FamilyRequestsCard tz={tz} /> : null}
 
       <Button title={t.family.signOut} variant="secondary" onPress={() => setDialog({ kind: 'signout' })} />
+      {parents.length >= 2 ? (
+        // The other parent stays with the family; the last one deletes it instead.
+        <Button
+          testID="leave-family"
+          title={t.family.leave}
+          variant="danger"
+          onPress={() => setDialog({ kind: 'leave' })}
+        />
+      ) : null}
       <Button title={t.family.deleteFamily} variant="danger" onPress={() => setDialog({ kind: 'delete' })} />
 
       {inviteKey ? (
@@ -167,6 +181,24 @@ export default function Family() {
         }
       />
       <ConfirmModal
+        visible={dialog?.kind === 'leave'}
+        title={t.family.leaveTitle}
+        text={t.family.leaveText}
+        confirmTitle={t.family.leaveConfirm}
+        danger
+        busy={busy}
+        error={error}
+        onCancel={close}
+        onConfirm={() =>
+          run(async () => {
+            await api.leaveFamily();
+            await auth.forgetAccount();
+            qc.clear();
+            router.replace('/welcome');
+          })
+        }
+      />
+      <ConfirmModal
         visible={dialog?.kind === 'delete'}
         title={t.family.deleteTitle}
         text={t.family.deleteText}
@@ -179,8 +211,10 @@ export default function Family() {
         onConfirm={() =>
           run(async () => {
             await api.deleteFamily();
+            // The parents' accounts are deleted too: forget this one here.
+            await auth.forgetAccount();
             qc.clear();
-            router.replace('/');
+            router.replace('/welcome');
           })
         }
       />

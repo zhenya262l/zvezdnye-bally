@@ -8,11 +8,12 @@ pkill -f "devstack/bin/postgrest" 2>/dev/null || true
 sleep 1
 RUN_AS=${DEVSTACK_USER:-claude}
 LOG=/tmp/zb-devstack.out
+rm -f "$LOG"
 if [ "$(id -u)" = "0" ]; then
-  sudo -u "$RUN_AS" -H bash -c "cd '$PWD' && nohup node devstack/start.mjs > $LOG 2>&1 &"
+  sudo -u "$RUN_AS" -H setsid bash -c "cd '$PWD' && nohup node devstack/start.mjs > $LOG 2>&1 < /dev/null &" > /dev/null 2>&1
   STATE=$(eval echo "~$RUN_AS")/.zb-devstack/state.json
 else
-  nohup node devstack/start.mjs > $LOG 2>&1 &
+  setsid nohup node devstack/start.mjs > $LOG 2>&1 < /dev/null &
   STATE=$HOME/.zb-devstack/state.json
 fi
 for i in $(seq 1 120); do

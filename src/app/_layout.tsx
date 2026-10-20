@@ -21,7 +21,12 @@ import { t } from '@/strings.ru';
 import { usePalette } from '@/theme';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } },
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: true },
+    // Offline taps must fail with "нет связи" at once, not wait silently and
+    // fire later (maybe on another day or outside the task's time).
+    mutations: { networkMode: 'always' },
+  },
 });
 
 export default function RootLayout() {

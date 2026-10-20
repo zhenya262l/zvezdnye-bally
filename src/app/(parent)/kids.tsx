@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
-import { PhoneIcon } from '@/components/art/Icons';
+import { PhoneIcon, StarIcon } from '@/components/art/Icons';
+import { BonusModal } from '@/components/BonusModal';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
@@ -12,14 +13,27 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { errorText, type Child } from '@/lib/api';
 import { formatAge, formatDayMonth } from '@/lib/dates';
-import { useChildren, useMembers } from '@/lib/queries';
+import { useChildDay, useChildren, useMembers } from '@/lib/queries';
 import { t } from '@/strings.ru';
-import { space } from '@/theme';
+import { onColor, space, usePalette } from '@/theme';
+
+function Balance({ childId }: { childId: string }) {
+  const p = usePalette();
+  const day = useChildDay(childId);
+  if (!day.data) return null;
+  return (
+    <T v="bodyBold" color={p.text} testID={`balance-${childId}`}>
+      {`⭐ ${t.kids.balance(day.data.formula.left)}`}
+    </T>
+  );
+}
 
 export default function Kids() {
+  const p = usePalette();
   const kids = useChildren();
   const members = useMembers();
   const [pairing, setPairing] = useState<Child | null>(null);
+  const [bonus, setBonus] = useState<Child | null>(null);
 
   if (kids.isPending) return <Loading />;
   if (kids.isError) return <LoadError text={errorText(kids.error)} onRetry={() => kids.refetch()} />;
@@ -35,21 +49,47 @@ export default function Kids() {
             <Avatar id={c.avatar} color={c.color} size={72} />
             <View style={styles.info}>
               <T v="big">{formatAge(c.birth_date)}</T>
+              <Balance childId={c.id} />
               <T muted>{t.kids.birthday(formatDayMonth(c.birth_date))}</T>
-              <T v="small" muted>
+              <T
+                v={phones(c.id) > 0 ? 'bodyBold' : 'small'}
+                color={phones(c.id) > 0 ? p.successText : p.textMuted}
+                testID={`phones-${c.id}`}>
                 {t.kids.phones(phones(c.id))}
               </T>
             </View>
           </View>
           <Button
-            testID={`connect-${c.id}`}
-            title={t.kids.connectPhone(c.name)}
-            icon={<PhoneIcon color="#FFFFFF" />}
-            onPress={() => setPairing(c)}
+            testID={`bonus-${c.id}`}
+            title={t.kids.bonus}
+            variant="accent"
+            icon={<StarIcon color={onColor(p.accent)} filled />}
+            onPress={() => setBonus(c)}
           />
           <Button
-            title={t.kids.edit}
+            title={t.kids.history}
             variant="secondary"
+            onPress={() => router.push({ pathname: '/history', params: { child: c.id } })}
+          />
+          {phones(c.id) === 0 ? (
+            <Button
+              testID={`connect-${c.id}`}
+              title={t.kids.connectPhone(c.name)}
+              icon={<PhoneIcon color={p.onPrimary} />}
+              onPress={() => setPairing(c)}
+            />
+          ) : (
+            // Already connected: only a quiet option for a new or second phone.
+            <Button
+              testID={`connect-${c.id}`}
+              title={t.kids.connectAnother}
+              variant="ghost"
+              onPress={() => setPairing(c)}
+            />
+          )}
+          <Button
+            title={t.kids.edit}
+            variant="ghost"
             onPress={() => router.push({ pathname: '/child-edit', params: { id: c.id } })}
           />
         </Card>
@@ -65,6 +105,7 @@ export default function Kids() {
           }}
         />
       ) : null}
+      {bonus ? <BonusModal key={bonus.id} child={bonus} onClose={() => setBonus(null)} /> : null}
     </Screen>
   );
 }

@@ -30,5 +30,5 @@ export default function Gate() {
 
   const m = who.data.member;
   if (!m) return <Redirect href={who.data.is_anonymous ? '/child-pair' : '/family-setup'} />;
-  return <Redirect href={m.role === 'parent' ? '/kids' : '/today'} />;
+  return <Redirect href={m.role === 'parent' ? '/approvals' : '/today'} />;
 }

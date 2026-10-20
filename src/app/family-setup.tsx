@@ -13,6 +13,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, errorText, type NewChild } from '@/lib/api';
 import { isValidBirthDate } from '@/lib/dates';
+import { useFamilyAccess } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { brand, childColors, radius, space, usePalette } from '@/theme';
@@ -36,6 +37,7 @@ export default function FamilySetup() {
   const qc = useQueryClient();
   const session = useSession((s) => s.session);
   const who = useWho();
+  const access = useFamilyAccess();
   const [role, setRole] = useState<'mom' | 'dad' | 'other'>('mom');
   const [otherName, setOtherName] = useState('');
   const [kids, setKids] = useState<NewChild[]>(() =>
@@ -46,8 +48,10 @@ export default function FamilySetup() {
   const [busy, setBusy] = useState(false);
 
   if (!session) return <Redirect href="/" />;
-  if (who.isPending) return <Loading />;
+  if (who.isPending || access.isPending) return <Loading />;
   if (who.data?.member || who.data?.is_anonymous) return <Redirect href="/" />;
+  // A new family needs the owner's approval first (the owner does not).
+  if (!access.data?.is_admin && access.data?.status !== 'approved') return <Redirect href="/family-request" />;
 
   const displayName = role === 'mom' ? t.setup.mom : role === 'dad' ? t.setup.dad : otherName.trim();
 
@@ -100,6 +104,13 @@ export default function FamilySetup() {
   return (
     <Screen>
       <T v="title">{t.setup.title}</T>
+      <Button
+        testID="have-invite"
+        title={t.setup.haveInvite}
+        subtitle={t.setup.haveInviteHint}
+        variant="secondary"
+        onPress={() => router.push('/join-family')}
+      />
       <T muted>{t.setup.lead}</T>
 
       <Card title={t.setup.youAre} accent={brand.turquoise}>

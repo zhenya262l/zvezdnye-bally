@@ -7,11 +7,13 @@ import { Avatar } from '@/components/art/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { FamilyRequestsCard } from '@/components/FamilyRequestsCard';
+import { ParentInviteModal } from '@/components/ParentInviteModal';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, auth, errorText, type MemberRow } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
-import { useChildren, useMembers } from '@/lib/queries';
+import { useChildren, useFamilyAccess, useMembers } from '@/lib/queries';
 import { useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { brand, space, usePalette } from '@/theme';
@@ -24,15 +26,18 @@ export default function Family() {
   const who = useWho();
   const kids = useChildren();
   const members = useMembers();
+  const access = useFamilyAccess();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteKey, setInviteKey] = useState<number | null>(null);
 
   const me = who.data?.member;
   const tz = me?.timezone;
   const childName = (id: string | null) => kids.data?.find((c) => c.id === id)?.name ?? '';
   const childOf = (id: string | null) => kids.data?.find((c) => c.id === id);
   const phones = (members.data ?? []).filter((m) => m.role === 'child');
+  const parents = (members.data ?? []).filter((m) => m.role === 'parent');
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -87,12 +92,34 @@ export default function Family() {
       </Card>
 
       <Card title={t.family.secondParent} accent={brand.violet}>
-        <T muted>{t.family.secondParentLater}</T>
+        {parents.map((m) => (
+          <T key={m.id} v="bodyBold" testID={`parent-${m.id}`}>
+            {m.display_name}
+            {m.user_id === who.data?.user_id ? ` (${t.family.you.toLowerCase()})` : ''}
+          </T>
+        ))}
+        <Button
+          testID="invite-parent"
+          title={t.family.invite}
+          variant="secondary"
+          onPress={() => setInviteKey(Date.now())}
+        />
       </Card>
+
+      {access.data?.is_admin ? <FamilyRequestsCard tz={tz} /> : null}
 
       <Button title={t.family.signOut} variant="secondary" onPress={() => setDialog({ kind: 'signout' })} />
       <Button title={t.family.deleteFamily} variant="danger" onPress={() => setDialog({ kind: 'delete' })} />
 
+      {inviteKey ? (
+        <ParentInviteModal
+          key={inviteKey}
+          onClose={() => {
+            setInviteKey(null);
+            void members.refetch();
+          }}
+        />
+      ) : null}
       <ConfirmModal
         visible={dialog?.kind === 'unlink'}
         title={t.family.unlinkTitle}

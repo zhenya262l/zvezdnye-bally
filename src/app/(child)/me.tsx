@@ -2,20 +2,22 @@ import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
 import { Card } from '@/components/Card';
+import { LedgerList } from '@/components/LedgerList';
 import { LoadError, Loading } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { errorText } from '@/lib/api';
 import { formatAge, formatDayMonth } from '@/lib/dates';
-import { useChildren } from '@/lib/queries';
+import { useChildren, useLedger } from '@/lib/queries';
 import { t } from '@/strings.ru';
-import { space } from '@/theme';
+import { brand, space } from '@/theme';
 
 export default function Me() {
   const kids = useChildren();
+  const me = kids.data?.[0];
+  const ledger = useLedger(me?.id);
   if (kids.isPending) return <Loading />;
   if (kids.isError) return <LoadError text={errorText(kids.error)} onRetry={() => kids.refetch()} />;
-  const me = kids.data[0];
   if (!me) return <Loading />;
   return (
     <Screen inTabs>
@@ -30,6 +32,9 @@ export default function Me() {
       </View>
       <Card title={t.childTabs.me} accent={me.color}>
         <T>{t.child.meBirthday(formatDayMonth(me.birth_date))}</T>
+      </Card>
+      <Card title={t.child.history} accent={brand.sun}>
+        <LedgerList rows={ledger.data ?? []} loading={ledger.isPending} failed={ledger.isError} />
       </Card>
     </Screen>
   );

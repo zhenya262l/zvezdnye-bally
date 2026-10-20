@@ -20,10 +20,14 @@ export type Palette = {
   textMuted: string;
   border: string;
   primary: string;
+  /** Turquoise for text links and text-only buttons (readable on the page). */
+  link: string;
   onPrimary: string;
   accent: string;
   danger: string;
   success: string;
+  /** Green for text: readable on cards and on light green badges. */
+  successText: string;
   star: string;
   inputBg: string;
   tabBar: string;
@@ -37,10 +41,13 @@ const light: Palette = {
   textMuted: '#4F6B80',
   border: '#E6E0D2',
   primary: brand.turquoise,
-  onPrimary: '#FFFFFF',
+  link: '#0B7A87',
+  // Deep navy: white on turquoise reads at only 2.5:1.
+  onPrimary: '#0B2236',
   accent: brand.coral,
-  danger: '#D64545',
+  danger: '#C53A3A',
   success: brand.leaf,
+  successText: '#1E7A4E',
   star: brand.sun,
   inputBg: '#FFFFFF',
   tabBar: '#FFFFFF',
@@ -54,10 +61,12 @@ const dark: Palette = {
   textMuted: '#A9C2D3',
   border: '#24557A',
   primary: '#22C3D4',
+  link: '#22C3D4',
   onPrimary: '#06202F',
   accent: '#FF8578',
   danger: '#FF7A7A',
   success: '#4CC38A',
+  successText: '#4CC38A',
   star: brand.sun,
   inputBg: '#0F2E47',
   tabBar: '#0F2E47',
@@ -86,3 +95,26 @@ export const TOUCH_MIN = 56;
 export const childColors = [
   brand.turquoise, brand.pink, brand.violet, brand.leaf, brand.coral, brand.sun, '#3B82F6', '#F59E0B',
 ] as const;
+
+// Text colour for a coloured background: white or deep navy, whichever reads
+// better (WCAG contrast). Used on section bands, chips and coloured buttons.
+const DEEP_NAVY = '#0B2236';
+
+function luminance(hex: string): number {
+  const h = hex.replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;
+  const c = [0, 2, 4].map((i) => {
+    const v = parseInt(h.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+
+export function contrast(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
+
+export function onColor(bg: string): string {
+  return contrast('#FFFFFF', bg) >= contrast(DEEP_NAVY, bg) ? '#FFFFFF' : DEEP_NAVY;
+}

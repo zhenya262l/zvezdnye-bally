@@ -11,6 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 
+import { consentId, sql } from '../db/helpers.mjs';
+
 const S = JSON.parse(
   fs.readFileSync(process.env.DEVSTACK_STATE ?? path.join(os.homedir(), '.zb-devstack/state.json'), 'utf8'),
 );
@@ -64,6 +66,16 @@ async function lastCode(email) {
   throw new Error('no email');
 }
 
+async function approveByEmail(email) {
+  const v = await consentId();
+  await sql(
+    `insert into public.family_requests (user_id, email, display_name, consent_version, status, decided_at)
+     select id, email, 'Тест', $2, 'approved', now() from auth.users where lower(email) = lower($1)
+     on conflict (user_id) do nothing`,
+    [email, v],
+  );
+}
+
 test('safari tab on iPhone shows the install guide', async () => {
   const { ctx, page } = await iphone({ standalone: false });
   await page.goto(APP);
@@ -74,6 +86,7 @@ test('safari tab on iPhone shows the install guide', async () => {
 });
 
 test('parent and child sign in on two phones', async () => {
+  await consentId(); // a fresh database has no consent text yet
   const email = `mama.${Date.now()}@example.com`;
   const parent = await iphone();
   const P = parent.page;
@@ -93,6 +106,11 @@ test('parent and child sign in on two phones', async () => {
   await shot(P, '03-login-code');
   await P.getByTestId('login-code').fill(code);
 
+  // New family: request with consent, approved by the owner (here: directly in the database).
+  await P.getByTestId('access-send').waitFor({ timeout: 15000 });
+  await approveByEmail(email);
+  await P.reload();
+
   // Family setup
   await P.getByTestId('setup-create').waitFor({ timeout: 15000 });
   await shot(P, '04-setup-empty');
@@ -103,7 +121,9 @@ test('parent and child sign in on two phones', async () => {
   await shot(P, '05-setup-filled');
   await P.getByTestId('setup-create').click();
 
-  // Kids tab
+  // Parent lands on "Ждут подписи"; go to the Kids tab
+  await P.getByText('Ждут подписи').first().waitFor({ timeout: 15000 });
+  await P.getByText('Дети', { exact: true }).last().click();
   await P.getByText('Подключить телефон: Аня').waitFor({ timeout: 15000 });
   assert.equal(await P.getByText('9 лет').count(), 2, 'both girls are 9');
   await shot(P, '06-kids');

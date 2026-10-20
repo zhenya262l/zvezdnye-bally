@@ -9,7 +9,7 @@ import { T } from '@/components/T';
 import { formatAge } from '@/lib/dates';
 import { useChildren } from '@/lib/queries';
 import { t } from '@/strings.ru';
-import { brand, space, TOUCH_MIN, usePalette } from '@/theme';
+import { brand, radius, space, TOUCH_MIN, usePalette } from '@/theme';
 
 export default function Settings() {
   const p = usePalette();
@@ -17,6 +17,20 @@ export default function Settings() {
   return (
     <Screen inTabs>
       <T v="title">{t.settings.title}</T>
+      <Pressable
+        testID="settings-tasks"
+        accessibilityRole="button"
+        onPress={() => router.push('/tasks')}
+        style={({ pressed }) => [styles.bigRow, { backgroundColor: p.card, borderColor: brand.sun, opacity: pressed ? 0.8 : 1 }]}>
+        <T style={styles.emoji}>⭐</T>
+        <View style={styles.flex}>
+          <T v="bodyBold">{t.settings.tasks}</T>
+          <T v="small" muted>
+            {t.settings.tasksHint}
+          </T>
+        </View>
+        <ChevronIcon color={p.textMuted} />
+      </Pressable>
       <Card title={t.settings.profiles} accent={brand.violet}>
         <T v="small" muted>
           {t.settings.profilesHint}
@@ -55,4 +69,14 @@ const styles = StyleSheet.create({
     paddingTop: space.s,
   },
   flex: { flex: 1 },
+  bigRow: {
+    minHeight: TOUCH_MIN + 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.m,
+    borderWidth: 2,
+    borderRadius: radius.m,
+    padding: space.l,
+  },
+  emoji: { fontSize: 28, lineHeight: 34 },
 });

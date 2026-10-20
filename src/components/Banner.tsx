@@ -6,7 +6,7 @@ import { T } from './T';
 export function Banner({ text, kind = 'error' }: { text?: string | null; kind?: 'error' | 'info' | 'success' }) {
   const p = usePalette();
   if (!text) return null;
-  const color = kind === 'error' ? p.danger : kind === 'success' ? p.success : p.primary;
+  const color = kind === 'error' ? p.danger : kind === 'success' ? p.successText : p.link;
   return (
     <View
       accessibilityRole="alert"

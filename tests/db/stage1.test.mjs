@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
+import { allowFamily } from './helpers.mjs';
 
 const statePath = process.env.DEVSTACK_STATE ?? path.join(os.homedir(), '.zb-devstack/state.json');
 const S = JSON.parse(fs.readFileSync(statePath, 'utf8'));
@@ -37,6 +38,8 @@ async function newParent(tag = 'p') {
   assert.match(mail.code, /^\d{6}$/);
   const v = await c.auth.verifyOtp({ email, token: mail.code, type: 'email' });
   assert.equal(v.error, null);
+  // Since the approval step, a new family needs the owner's approval first.
+  await allowFamily(v.data.user.id, email);
   return { c, email, userId: v.data.user.id };
 }
 

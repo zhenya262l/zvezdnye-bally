@@ -41,6 +41,116 @@ export type MemberRow = {
 
 export type NewChild = { name: string; birth_date: string; avatar: string; color: string };
 
+/** was + earned − spent + corrected = left (corrected: a parent's corrections today). */
+export type Formula = { was: number; earned: number; spent: number; corrected: number; left: number };
+
+export type DayTask = {
+  id: string;
+  title: string;
+  icon: string;
+  points: number;
+  needs_approval: boolean;
+  section_id: string;
+  section: string;
+  color: string;
+  window_start: string | null;
+  window_end: string | null;
+  window: 'open' | 'before' | 'after';
+  completion_id: string | null;
+  status: 'pending' | 'approved' | 'rejected' | null;
+  earned: number | null;
+  praise: string | null;
+  praised_by_name: string | null;
+};
+
+export type ChildDay = { child_id: string; date: string; time: string; formula: Formula; tasks: DayTask[] };
+
+export type QueueItem = {
+  id: string;
+  child_id: string;
+  child_name: string;
+  child_color: string;
+  child_avatar: string;
+  title: string;
+  icon: string;
+  for_date: string;
+  /** For the family's "today" on the server (Europe/Minsk), not the phone's clock. */
+  is_today: boolean;
+  created_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  points: number;
+  auto_approved: boolean;
+  decided_at: string | null;
+  decided_by_name: string | null;
+  decided_by_me: boolean | null;
+  praise: string | null;
+  praised_by_name: string | null;
+};
+
+export type Section = { id: string; name: string; color: string; sort_order: number };
+
+export type TaskTemplate = {
+  id: string;
+  child_id: string;
+  section_id: string;
+  title: string;
+  icon: string;
+  points: number;
+  days: number[];
+  window_start: string | null;
+  window_end: string | null;
+  needs_approval: boolean;
+  enabled: boolean;
+  sort_order: number;
+};
+
+export type TaskInput = {
+  id: string | null;
+  childIds: string[];
+  sectionId: string;
+  title: string;
+  icon: string;
+  points: number;
+  days: number[];
+  windowStart: string | null;
+  windowEnd: string | null;
+  needsApproval: boolean;
+  enabled: boolean;
+};
+
+export type LedgerRow = {
+  id: number;
+  child_id: string;
+  kind: string;
+  delta: number;
+  for_date: string;
+  title: string;
+  comment: string | null;
+  created_at: string;
+  /** Praise from a parent for the task behind this entry, if any. */
+  completion: { praise: string | null } | null;
+};
+
+export type FamilyAccess = {
+  is_admin: boolean;
+  member: boolean;
+  status: 'none' | 'pending' | 'approved' | 'declined';
+  requested_at: string | null;
+};
+
+export type Consent = { id: number; body: string; created_at: string } | null;
+
+export type FamilyRequest = {
+  id: string;
+  email: string;
+  display_name: string;
+  consent_version: number;
+  consent_at: string;
+  status: 'pending' | 'approved' | 'declined';
+  decided_at: string | null;
+  created_at: string;
+};
+
 /** Error with a key from t.errors, so screens can show a friendly message. */
 export class ApiError extends Error {
   constructor(public key: string, message?: string) {
@@ -120,6 +230,134 @@ export const api = {
     const { data, error } = await supabase.from('children').select('*').order('sort_order').order('created_at');
     if (error) throw toApiError(error);
     return data as Child[];
+  },
+
+  // Stage 2: tasks, requests, signatures, ledger
+
+  childDay: (childId?: string) => rpc<ChildDay>('child_day', childId ? { p_child_id: childId } : {}),
+
+  markDone: (taskId: string) =>
+    rpc<{ completion_id: string; status: DayTask['status']; already: boolean }>('mark_done', { p_task_id: taskId }),
+
+  parentQueue: () => rpc<QueueItem[]>('parent_queue'),
+
+  approveRequest: (id: string, approve: boolean) =>
+    rpc<{
+      changed: boolean;
+      status: string;
+      points?: number;
+      decided_by_name?: string | null;
+      decided_by_me?: boolean;
+    }>('approve_request', {
+      p_request_id: id,
+      p_approve: approve,
+    }),
+
+  approveAllToday: () => rpc<{ count: number; points: number }>('approve_all_today'),
+
+  giveBonus: (childId: string, points: number, comment: string) =>
+    rpc<number>('give_bonus', { p_child_id: childId, p_points: points, p_comment: comment.trim() || null }),
+
+  addCorrection: (childId: string, delta: number, comment: string) =>
+    rpc<number>('add_correction', { p_child_id: childId, p_delta: delta, p_comment: comment }),
+
+  listSections: async (): Promise<Section[]> => {
+    const { data, error } = await supabase.from('task_sections').select('id,name,color,sort_order').order('sort_order');
+    if (error) throw toApiError(error);
+    return data as Section[];
+  },
+
+  listTasks: async (childId: string): Promise<TaskTemplate[]> => {
+    const { data, error } = await supabase
+      .from('task_templates')
+      .select('id,child_id,section_id,title,icon,points,days,window_start,window_end,needs_approval,enabled,sort_order')
+      .eq('child_id', childId)
+      .is('deleted_at', null)
+      .order('sort_order')
+      .order('created_at');
+    if (error) throw toApiError(error);
+    return (data as TaskTemplate[]).map((x) => ({
+      ...x,
+      window_start: x.window_start ? x.window_start.slice(0, 5) : null,
+      window_end: x.window_end ? x.window_end.slice(0, 5) : null,
+    }));
+  },
+
+  saveTask: (v: TaskInput) =>
+    rpc<string[]>('save_task', {
+      p_task_id: v.id,
+      p_child_ids: v.childIds,
+      p_section_id: v.sectionId,
+      p_title: v.title.trim(),
+      p_icon: v.icon,
+      p_points: v.points,
+      p_days: v.days,
+      p_window_start: v.windowStart,
+      p_window_end: v.windowEnd,
+      p_needs_approval: v.needsApproval,
+      p_enabled: v.enabled,
+    }),
+
+  setTaskEnabled: (id: string, enabled: boolean) => rpc<null>('set_task_enabled', { p_task_id: id, p_enabled: enabled }),
+
+  /** Parent's check for one task: true = points only after the parent signs. */
+  setTaskApproval: (id: string, needs: boolean) => rpc<null>('set_task_approval', { p_task_id: id, p_needs: needs }),
+
+  /** The same check for all tasks of one child. Returns how many tasks changed. */
+  setChildTasksApproval: (childId: string, needs: boolean) =>
+    rpc<number>('set_child_tasks_approval', { p_child_id: childId, p_needs: needs }),
+
+  praiseRequest: (id: string, praise: string) =>
+    rpc<{ ok: boolean; praise: string }>('praise_request', { p_request_id: id, p_praise: praise }),
+
+  deleteTask: (id: string) => rpc<null>('delete_task', { p_task_id: id }),
+
+  reorderTasks: (ids: string[]) => rpc<null>('reorder_tasks', { p_task_ids: ids }),
+
+  copyTasks: (fromChild: string, toChild: string) =>
+    rpc<number>('copy_tasks', { p_from_child: fromChild, p_to_child: toChild }),
+
+  saveSection: (id: string | null, name: string, color: string | null) =>
+    rpc<string>('save_section', { p_section_id: id, p_name: name.trim(), p_color: color }),
+
+  listLedger: async (childId: string): Promise<LedgerRow[]> => {
+    const { data, error } = await supabase
+      .from('ledger')
+      .select('id,child_id,kind,delta,for_date,title,comment,created_at,completion:task_completions(praise)')
+      .eq('child_id', childId)
+      .order('id', { ascending: false })
+      .limit(200);
+    if (error) throw toApiError(error);
+    return data as unknown as LedgerRow[]; // "completion" is one row (many-to-one)
+  },
+
+  createParentInvite: () => rpc<{ code: string; expires_at: string }>('create_parent_invite'),
+
+  myFamilyAccess: () => rpc<FamilyAccess>('my_family_access'),
+
+  currentConsent: () => rpc<Consent>('current_consent'),
+
+  requestFamilyAccess: (displayName: string, consentVersion: number) =>
+    rpc<{ status: FamilyAccess['status'] }>('request_family_access', {
+      p_display_name: displayName,
+      p_consent_version: consentVersion,
+    }),
+
+  listFamilyRequests: () => rpc<FamilyRequest[]>('list_family_requests'),
+
+  decideFamilyRequest: (id: string, approve: boolean) =>
+    rpc<{ status: string }>('decide_family_request', { p_request_id: id, p_approve: approve }),
+
+  saveConsentVersion: (body: string) => rpc<number>('save_consent_version', { p_body: body }),
+
+  joinFamily: async (code: string, displayName: string, consentVersion: number) => {
+    const r = await rpc<{ ok: boolean; error?: string }>('join_family', {
+      p_code: code,
+      p_display_name: displayName,
+      p_consent_version: consentVersion,
+    });
+    if (!r.ok) throw new ApiError(r.error ?? 'generic');
+    return r;
   },
 
   listMembers: async (): Promise<MemberRow[]> => {

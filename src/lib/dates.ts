@@ -71,3 +71,16 @@ export function formatDateTime(ts: string, tz: string = FAMILY_TZ): string {
 export function isValidBirthDate(iso: string, today: string = todayISO()): boolean {
   return !!parseISODate(iso) && iso >= '2000-01-01' && iso <= today;
 }
+
+/** "19:42" in the family time zone. */
+export function formatTime(ts: string, tz: string = FAMILY_TZ): string {
+  return new Intl.DateTimeFormat('ru-RU', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
+}
+
+/** Day before `iso` (YYYY-MM-DD). */
+export function prevDay(iso: string): string {
+  const p = parseISODate(iso);
+  if (!p) return iso;
+  const d = new Date(Date.UTC(p.y, p.m - 1, p.d - 1));
+  return d.toISOString().slice(0, 10);
+}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { radius, space, TOUCH_MIN, usePalette } from '@/theme';
+import { onColor, radius, space, TOUCH_MIN, usePalette } from '@/theme';
 import { T } from './T';
 
 type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
@@ -28,9 +28,9 @@ export function Button({ title, onPress, variant = 'primary', disabled, loading,
   }[variant];
   const fg = {
     primary: p.onPrimary,
-    accent: '#FFFFFF',
+    accent: onColor(p.accent),
     secondary: p.text,
-    ghost: p.primary,
+    ghost: p.link,
     danger: p.danger,
   }[variant];
   const bordered = variant === 'secondary' || variant === 'danger';

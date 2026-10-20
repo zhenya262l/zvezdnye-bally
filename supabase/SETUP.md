@@ -21,3 +21,8 @@
    - Body: содержимое `email-templates/confirmation.html` и `email-templates/magic_link.html`.
 6. **Authentication → URL Configuration.** Site URL: `https://zhenya262l.github.io/zvezdnye-bally/`.
 7. **Project Settings → API Keys.** Project URL и **publishable key** записаны в переменные репозитория GitHub `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY`. Секретный ключ никуда не копируется.
+8. **Пуши.**
+   - **SQL Editor:** выполнить `migrations/20261022000100_push.sql`.
+   - **Edge Functions → Deploy a new function → Via Editor.** Имя `push`, код из `functions/push/index.ts` → **Deploy function**. В настройках функции выключить проверку JWT («Verify JWT» / «Enforce JWT verification»): вызов защищён секретом, который сделала база. Секреты функции добавлять не нужно: адрес базы Supabase даёт сам.
+   - **SQL Editor:** выполнить `sql/push_live.sql`, вписав вместо `<project-ref>` ref проекта. Он включает pg_net и pg_cron, записывает адрес функции и ставит проверку раз в минуту, затем будит функцию: она создаёт ключи VAPID (закрытый ключ — в Vault).
+   - Проверка: `select public.push_public_key();` возвращает длинную строку. В приложении «Настройки» → «Уведомления» → «Включить уведомления» → «Проверить уведомление».

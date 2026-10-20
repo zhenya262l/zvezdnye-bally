@@ -123,7 +123,10 @@ begin
     return;
   end if;
   perform set_config('zb.push_pinged', '1', true);
-  if to_regproc('net.http_post') is null then
+  -- Checked in the catalog: a name with several versions would make
+  -- to_regproc() return null and the ping would silently never happen.
+  if not exists (select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+                  where n.nspname = 'net' and p.proname = 'http_post') then
     return;
   end if;
   select c.function_url, c.ping_secret into v_url, v_secret from private.push_config c where c.id = 1;
@@ -472,7 +475,8 @@ as $$
 begin
   perform pg_advisory_xact_lock(hashtext('zb.push_keys'));
   if (select c.public_key from private.push_config c where c.id = 1) is null then
-    if to_regproc('vault.create_secret') is not null then
+    if exists (select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+                where n.nspname = 'vault' and p.proname = 'create_secret') then
       execute 'select vault.create_secret($1, $2, $3)'
         using p_private, 'zb_push_vapid_private', 'VAPID private key of Звёздные баллы (made by the push function)';
       update private.push_config set public_key = p_public, updated_at = now() where id = 1;

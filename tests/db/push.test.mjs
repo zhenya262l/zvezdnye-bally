@@ -273,3 +273,39 @@ test('keys: the first saved pair wins; the private key is not stored with the pu
                                    private.push_check_secret((select ping_secret from private.push_config)) as c`);
   assert.deepEqual(secret.rows[0], { a: false, b: false, c: true });
 });
+
+test('the database wakes the function once per change, with the secret (pg_net stand-in)', async () => {
+  // Same signature as pg_net's net.http_post on Supabase.
+  await sql(`create schema if not exists net`);
+  await sql(`create table if not exists net.calls (url text, headers jsonb, at timestamptz default now())`);
+  await sql(`create or replace function net.http_post(
+               url text, body jsonb default '{}'::jsonb, params jsonb default '{}'::jsonb,
+               headers jsonb default '{"Content-Type": "application/json"}'::jsonb,
+               timeout_milliseconds int default 5000)
+             returns bigint language sql as $$
+               insert into net.calls (url, headers) values (url, headers) returning 1::bigint $$`);
+  await sql(`update private.push_config set function_url = 'https://example.test/functions/v1/push' where id = 1`);
+  try {
+    const { p, d, kid } = await setup('push-ping');
+    const a = await taskOf(p.c, kid.id);
+    const b = await taskOf(p.c, kid.id, 'Умылась');
+    await p.c.rpc('set_task_approval', { p_task_id: a.id, p_needs: true });
+    await p.c.rpc('set_task_approval', { p_task_id: b.id, p_needs: true });
+    const ma = await d.c.rpc('mark_done', { p_task_id: a.id });
+    const mb = await d.c.rpc('mark_done', { p_task_id: b.id });
+    await sql('delete from net.calls');
+    // «Подписать всё за сегодня»: two answers, one transaction, one wake-up.
+    const r = await p.c.rpc('approve_all_today');
+    assert.equal(r.error, null);
+    assert.equal((await outbox(d.userId)).filter((x) => x.kind === 'decision').length, 2);
+    const calls = (await sql('select * from net.calls')).rows;
+    assert.equal(calls.length, 1, 'one call per transaction');
+    assert.equal(calls[0].url, 'https://example.test/functions/v1/push');
+    const secret = (await sql('select ping_secret from private.push_config')).rows[0].ping_secret;
+    assert.equal(calls[0].headers['x-zb-push'], secret);
+    assert.ok(ma.data && mb.data);
+  } finally {
+    await sql(`update private.push_config set function_url = null where id = 1`);
+    await sql('drop schema net cascade');
+  }
+});

@@ -32,6 +32,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "http_ece": "^1.2.0",
     "mailparser": "^3.9.39",
     "pg": "^8.23.1",
     "playwright-core": "^1.64.1",
@@ -52,7 +53,9 @@
     "icons": "node scripts/make-icons.mjs",
     "devstack": "bash devstack/fetch-binaries.sh && bash devstack/restart.sh",
     "test:db": "node --test --test-concurrency=1 tests/db/*.test.mjs",
-    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.mjs"
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.mjs",
+    "test:fn": "npm install --no-save deno@2.5.6 && node --test --test-concurrency=1 tests/fn/*.test.mjs",
+    "check:fn": "cd supabase/functions/push && ../../../node_modules/deno/deno check --node-modules-dir=none index.ts"
   },
   "private": true
 }

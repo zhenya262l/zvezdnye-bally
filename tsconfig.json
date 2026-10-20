@@ -23,6 +23,7 @@
     "sw",
     "devstack",
     "tests",
-    "scripts"
+    "scripts",
+    "supabase/functions"
   ]
 }

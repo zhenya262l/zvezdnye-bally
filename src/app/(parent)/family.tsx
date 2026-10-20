@@ -15,6 +15,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, auth, errorText, type MemberRow } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { forgetPush } from '@/lib/pushState';
 import { useChildren, useFamilyAccess, useMembers } from '@/lib/queries';
 import { useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
@@ -174,6 +175,7 @@ export default function Family() {
         onCancel={close}
         onConfirm={() =>
           run(async () => {
+            await forgetPush(true);
             await auth.signOut();
             qc.clear();
             router.replace('/welcome');
@@ -192,6 +194,7 @@ export default function Family() {
         onConfirm={() =>
           run(async () => {
             await api.leaveFamily();
+            await forgetPush(false);
             await auth.forgetAccount();
             qc.clear();
             router.replace('/welcome');
@@ -212,6 +215,7 @@ export default function Family() {
           run(async () => {
             await api.deleteFamily();
             // The parents' accounts are deleted too: forget this one here.
+            await forgetPush(false);
             await auth.forgetAccount();
             qc.clear();
             router.replace('/welcome');

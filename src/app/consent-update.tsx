@@ -11,6 +11,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { api, auth, errorText, toApiError } from '@/lib/api';
 import { useConsent, useMembers } from '@/lib/queries';
+import { forgetPush } from '@/lib/pushState';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 
@@ -68,6 +69,7 @@ export default function ConsentUpdate() {
     try {
       await action();
       // The account is deleted on the server: forget it on this phone.
+      await forgetPush(false);
       await auth.forgetAccount();
       qc.clear();
       router.replace('/welcome');

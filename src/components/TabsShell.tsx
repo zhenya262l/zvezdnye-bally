@@ -1,9 +1,10 @@
 import { Redirect, Tabs } from 'expo-router';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Loading } from '@/components/Loading';
+import { resyncPush } from '@/lib/pushState';
 import { useSession, useWho } from '@/lib/session';
 import { useTextScale } from '@/lib/textScale';
 import { fonts, usePalette } from '@/theme';
@@ -18,6 +19,12 @@ export function TabsShell({ role, tabs }: { role: 'parent' | 'child'; tabs: TabD
   const session = useSession((s) => s.session);
   const ready = useSession((s) => s.ready);
   const who = useWho();
+
+  const member = who.data?.member?.role === role;
+  // Once per start: a phone that allowed notifications reminds the server.
+  useEffect(() => {
+    if (member) void resyncPush();
+  }, [member]);
 
   // Larger iPhone text makes tab labels taller: the bar grows with them.
   const labelScale = Math.min(scale, 1.25);

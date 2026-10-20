@@ -7,7 +7,7 @@ import { Nunito_700Bold } from '@expo-google-fonts/nunito/700Bold';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { router, Stack, type ErrorBoundaryProps, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View } from 'react-native';
@@ -56,6 +56,25 @@ export default function RootLayout() {
 
   useEffect(() => {
     startSession();
+  }, []);
+
+  // A tapped notification while the app is open: the service worker asks the
+  // app to show that screen (see sw/sw.ts).
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = async (e: MessageEvent) => {
+      if (e.data?.type !== 'zb-open' || typeof e.data.url !== 'string') return;
+      try {
+        const target = new URL(e.data.url);
+        const scope = new URL((await navigator.serviceWorker.ready).scope).pathname;
+        const inside = target.pathname.startsWith(scope) ? target.pathname.slice(scope.length - 1) : target.pathname;
+        router.push((inside + target.search) as Href);
+      } catch {
+        // The notification still opened the app; the screen stays as it was.
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
   }, []);
 
   if (!fontsLoaded && !fontError) {

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/art/Avatar';
 import { ChevronIcon } from '@/components/art/Icons';
 import { Card } from '@/components/Card';
+import { NotificationsCard } from '@/components/NotificationsCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { formatAge } from '@/lib/dates';
@@ -31,6 +32,7 @@ export default function Settings() {
         </View>
         <ChevronIcon color={p.textMuted} />
       </Pressable>
+      <NotificationsCard role="parent" />
       <Card title={t.settings.profiles} accent={brand.violet}>
         <T v="small" muted>
           {t.settings.profilesHint}

@@ -142,6 +142,15 @@ export type FamilyAccess = {
 
 export type Consent = { id: number; body: string; created_at: string } | null;
 
+/** Notification settings of the signed-in person (times are HH:MM, family time). */
+export type PushSettings = {
+  ready: boolean;
+  subscriptions: number;
+  summary_at: string;
+  quiet_from: string;
+  quiet_to: string;
+} | null;
+
 export type FamilyRequest = {
   id: string;
   email: string;
@@ -229,6 +238,25 @@ export const api = {
   unlinkDevice: (memberId: string) => rpc<null>('unlink_device', { p_member_id: memberId }),
 
   deleteFamily: () => rpc<null>('delete_family'),
+
+  pushPublicKey: () => rpc<string | null>('push_public_key'),
+
+  savePushSubscription: (k: { endpoint: string; p256dh: string; auth: string }) =>
+    rpc<null>('save_push_subscription', {
+      p_endpoint: k.endpoint,
+      p_p256dh: k.p256dh,
+      p_auth: k.auth,
+      p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent.slice(0, 300),
+    }),
+
+  deletePushSubscription: (endpoint: string) => rpc<null>('delete_push_subscription', { p_endpoint: endpoint }),
+
+  myPushSettings: () => rpc<PushSettings>('my_push_settings'),
+
+  savePushSettings: (summaryAt: string, quietFrom: string, quietTo: string) =>
+    rpc<null>('save_push_settings', { p_summary_at: summaryAt, p_quiet_from: quietFrom, p_quiet_to: quietTo }),
+
+  sendTestPush: () => rpc<number>('send_test_push'),
 
   /** A parent leaves the family while the other parent stays. */
   leaveFamily: () => rpc<null>('leave_family'),

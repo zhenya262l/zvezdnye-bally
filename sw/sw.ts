@@ -19,7 +19,9 @@ precacheAndRoute(self.__WB_MANIFEST);
 const base = new URL(self.registration.scope).pathname;
 registerRoute(new NavigationRoute(createHandlerBoundToURL(`${base}index.html`)));
 
-// Web Push (used from stage 2). Payload: {title, body, tag, url}.
+// Web Push. Payload from supabase/functions/push: {title, body, tag, url}.
+// iPhone revokes the permission if a push shows nothing, so every push shows
+// a notification.
 self.addEventListener('push', (event) => {
   let data: { title?: string; body?: string; tag?: string; url?: string } = {};
   try {
@@ -38,7 +40,8 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Tapping a notification opens (or focuses) the app on the right screen.
+// Tapping a notification opens the app on the right screen. An open app is
+// asked to switch screens itself (no reload); otherwise the app starts there.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = new URL((event.notification.data?.url as string) ?? base, self.registration.scope).href;
@@ -46,9 +49,13 @@ self.addEventListener('notificationclick', (event) => {
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       for (const w of windows) {
-        await w.focus();
-        if ('navigate' in w) await w.navigate(target);
-        return;
+        try {
+          w.postMessage({ type: 'zb-open', url: target });
+          await w.focus();
+          return;
+        } catch {
+          // This window cannot be used: try the next one or open a new one.
+        }
       }
       await self.clients.openWindow(target);
     })(),

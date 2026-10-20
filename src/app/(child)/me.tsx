@@ -4,6 +4,7 @@ import { Avatar } from '@/components/art/Avatar';
 import { Card } from '@/components/Card';
 import { LedgerList } from '@/components/LedgerList';
 import { LoadError, Loading } from '@/components/Loading';
+import { NotificationsCard } from '@/components/NotificationsCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { errorText } from '@/lib/api';
@@ -33,6 +34,7 @@ export default function Me() {
       <Card title={t.childTabs.me} accent={me.color}>
         <T>{t.child.meBirthday(formatDayMonth(me.birth_date))}</T>
       </Card>
+      <NotificationsCard role="child" />
       <Card title={t.child.history} accent={brand.sun}>
         <LedgerList rows={ledger.data ?? []} loading={ledger.isPending} failed={ledger.isError} />
       </Card>

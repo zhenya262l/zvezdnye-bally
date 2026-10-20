@@ -48,3 +48,4 @@ devstack/bin/
 # owner's brief: contains family details, keep it out of the public repository
 SPEC.md
 SPEC_*.md
+deno.lock

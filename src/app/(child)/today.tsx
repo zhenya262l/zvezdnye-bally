@@ -8,6 +8,7 @@ import { Island } from '@/components/art/Island';
 import { Card } from '@/components/Card';
 import { Formula } from '@/components/Formula';
 import { LoadError, Loading } from '@/components/Loading';
+import { PushPrompt } from '@/components/PushPrompt';
 import { Screen } from '@/components/Screen';
 import { StarFlight, type Point } from '@/components/StarFlight';
 import { T } from '@/components/T';
@@ -171,6 +172,7 @@ export default function Today() {
       <Screen inTabs>
         <T v="title">{me ? t.childPair.hello(me.name) : t.childTabs.today}</T>
         <T muted>{formatDayMonth(day.data.date)}</T>
+        <PushPrompt role="child" />
         <Formula was={f.was} earned={f.earned} spent={f.spent} corrected={f.corrected} left={f.left} leftRef={target} />
         {sections.length === 0 ? (
           <Card title={t.childTabs.today} accent={brand.sun}>

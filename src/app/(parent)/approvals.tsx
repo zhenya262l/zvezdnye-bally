@@ -7,6 +7,7 @@ import { PenIcon } from '@/components/art/Icons';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
+import { PushPrompt } from '@/components/PushPrompt';
 import { QueueCard } from '@/components/QueueCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
@@ -105,6 +106,7 @@ export default function Approvals() {
     <View style={styles.root}>
       <Screen inTabs>
         <T v="title">{t.approvals.title}</T>
+        <PushPrompt role="parent" />
         {pendingToday.length > 0 ? (
           <Button
             testID="sign-all"

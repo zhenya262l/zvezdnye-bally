@@ -5,6 +5,7 @@ import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Island } from '@/components/art/Island';
+import { PhotoSheet } from '@/components/PhotoSheet';
 import { Card } from '@/components/Card';
 import { Formula } from '@/components/Formula';
 import { LoadError, Loading } from '@/components/Loading';
@@ -47,6 +48,8 @@ export default function Today() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [busyId, setBusyId] = useState<string | null>(null);
+  // A task with «Фото»: the sheet for the photo is open.
+  const [photoTask, setPhotoTask] = useState<DayTask | null>(null);
   // The error is shown under the task the child tapped, where she is looking.
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -65,12 +68,13 @@ export default function Today() {
   const seen = useRef<Map<string, DayTask['status']> | null>(null);
 
   const mark = useMutation({
-    mutationFn: (task: DayTask) => api.markDone(task.id),
-    onMutate: (task) => {
+    mutationFn: ({ task, photo }: { task: DayTask; photo?: string }) => api.markDone(task.id, photo),
+    onMutate: ({ task }) => {
       setBusyId(task.id);
       setError(null);
     },
-    onSuccess: (r, task) => {
+    onSuccess: (r, { task }) => {
+      setPhotoTask(null);
       // Without a check the points are credited at once: show them in the
       // formula right away, so the star and the badge show the new balance.
       const credited = r.status === 'approved' && !r.already && task.status !== 'approved' ? task.points : 0;
@@ -98,7 +102,7 @@ export default function Today() {
       );
       void qc.invalidateQueries({ queryKey: ['childDay', uid] });
     },
-    onError: (e, task) => {
+    onError: (e, { task }) => {
       setError({ id: task.id, text: errorText(e) });
       // The task may have been switched off or its time may be over: refresh.
       void qc.invalidateQueries({ queryKey: ['childDay', uid] });
@@ -205,7 +209,12 @@ export default function Today() {
                   key={task.id}
                   task={task}
                   busy={busyId === task.id}
-                  onDone={() => mark.mutate(task)}
+                  onDone={() => {
+                    if (task.needs_photo) {
+                      setError(null);
+                      setPhotoTask(task);
+                    } else mark.mutate({ task });
+                  }}
                   error={error?.id === task.id ? error.text : null}
                   rowRef={(v) => {
                     rows.set(task.id, v);
@@ -226,6 +235,15 @@ export default function Today() {
             {t.child.balanceNow(day.data?.formula.left ?? pill.value)}
           </T>
         </View>
+      ) : null}
+      {photoTask ? (
+        <PhotoSheet
+          task={photoTask}
+          sending={busyId === photoTask.id}
+          error={error?.id === photoTask.id ? error.text : null}
+          onSend={(photo) => mark.mutate({ task: photoTask, photo: photo.base64 })}
+          onClose={() => setPhotoTask(null)}
+        />
       ) : null}
       {flights.map((fl) => (
         <StarFlight

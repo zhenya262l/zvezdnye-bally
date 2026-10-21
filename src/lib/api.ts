@@ -52,6 +52,8 @@ export type DayTask = {
   icon: string;
   points: number;
   needs_approval: boolean;
+  /** «Сделала» needs a photo of the result. */
+  needs_photo: boolean;
   section_id: string;
   section: string;
   color: string;
@@ -60,6 +62,8 @@ export type DayTask = {
   window: 'open' | 'before' | 'after';
   completion_id: string | null;
   status: 'pending' | 'approved' | 'rejected' | null;
+  /** The request has a photo (kept 7 days after the parent's decision). */
+  has_photo: boolean;
   earned: number | null;
   praise: string | null;
   praised_by_name: string | null;
@@ -87,6 +91,7 @@ export type QueueItem = {
   decided_by_me: boolean | null;
   praise: string | null;
   praised_by_name: string | null;
+  has_photo: boolean;
 };
 
 export type Section = { id: string; name: string; color: string; sort_order: number };
@@ -102,6 +107,7 @@ export type TaskTemplate = {
   window_start: string | null;
   window_end: string | null;
   needs_approval: boolean;
+  needs_photo: boolean;
   enabled: boolean;
   sort_order: number;
 };
@@ -117,6 +123,7 @@ export type TaskInput = {
   windowStart: string | null;
   windowEnd: string | null;
   needsApproval: boolean;
+  needsPhoto: boolean;
   enabled: boolean;
 };
 
@@ -129,8 +136,8 @@ export type LedgerRow = {
   title: string;
   comment: string | null;
   created_at: string;
-  /** Praise from a parent for the task behind this entry, if any. */
-  completion: { praise: string | null } | null;
+  /** The task request behind this entry: praise and photo, if any. */
+  completion: { id: string; praise: string | null; has_photo: boolean } | null;
 };
 
 export type FamilyAccess = {
@@ -273,8 +280,18 @@ export const api = {
 
   childDay: (childId?: string) => rpc<ChildDay>('child_day', childId ? { p_child_id: childId } : {}),
 
-  markDone: (taskId: string) =>
-    rpc<{ completion_id: string; status: DayTask['status']; already: boolean }>('mark_done', { p_task_id: taskId }),
+  /** «Сделала». `photo`: a JPEG as base64, for a task with «Фото». */
+  markDone: (taskId: string, photo?: string) =>
+    rpc<{ completion_id: string; status: DayTask['status']; already: boolean }>(
+      'mark_done',
+      photo ? { p_task_id: taskId, p_photo: photo } : { p_task_id: taskId },
+    ),
+
+  /** The photo of a request, as a JPEG data URL. */
+  taskPhoto: async (completionId: string) => {
+    const r = await rpc<{ image: string; created_at: string }>('task_photo', { p_completion_id: completionId });
+    return `data:image/jpeg;base64,${r.image}`;
+  },
 
   parentQueue: () => rpc<QueueItem[]>('parent_queue'),
 
@@ -308,7 +325,9 @@ export const api = {
   listTasks: async (childId: string): Promise<TaskTemplate[]> => {
     const { data, error } = await supabase
       .from('task_templates')
-      .select('id,child_id,section_id,title,icon,points,days,window_start,window_end,needs_approval,enabled,sort_order')
+      .select(
+        'id,child_id,section_id,title,icon,points,days,window_start,window_end,needs_approval,needs_photo,enabled,sort_order',
+      )
       .eq('child_id', childId)
       .is('deleted_at', null)
       .order('sort_order')
@@ -334,12 +353,16 @@ export const api = {
       p_window_end: v.windowEnd,
       p_needs_approval: v.needsApproval,
       p_enabled: v.enabled,
+      p_needs_photo: v.needsPhoto,
     }),
 
   setTaskEnabled: (id: string, enabled: boolean) => rpc<null>('set_task_enabled', { p_task_id: id, p_enabled: enabled }),
 
   /** Parent's check for one task: true = points only after the parent signs. */
   setTaskApproval: (id: string, needs: boolean) => rpc<null>('set_task_approval', { p_task_id: id, p_needs: needs }),
+
+  /** «Фото» for one task (turns the parent's check on as well). */
+  setTaskPhoto: (id: string, needs: boolean) => rpc<null>('set_task_photo', { p_task_id: id, p_needs: needs }),
 
   /** The same check for all tasks of one child. Returns how many tasks changed. */
   setChildTasksApproval: (childId: string, needs: boolean) =>
@@ -361,7 +384,7 @@ export const api = {
   listLedger: async (childId: string): Promise<LedgerRow[]> => {
     const { data, error } = await supabase
       .from('ledger')
-      .select('id,child_id,kind,delta,for_date,title,comment,created_at,completion:task_completions(praise)')
+      .select('id,child_id,kind,delta,for_date,title,comment,created_at,completion:task_completions(id,praise,has_photo)')
       .eq('child_id', childId)
       .order('id', { ascending: false })
       .limit(200);

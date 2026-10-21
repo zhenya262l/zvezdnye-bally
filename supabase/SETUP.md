@@ -26,3 +26,6 @@
    - **Edge Functions → Deploy a new function → Via Editor.** Имя `push`, код из `functions/push/index.ts` → **Deploy function**. В настройках функции выключить проверку JWT («Verify JWT» / «Enforce JWT verification»): вызов защищён секретом, который сделала база. Секреты функции добавлять не нужно: адрес базы Supabase даёт сам.
    - **SQL Editor:** выполнить `sql/push_live.sql`, вписав вместо `<project-ref>` ref проекта. Он включает pg_net и pg_cron, записывает адрес функции и ставит проверку раз в минуту, затем будит функцию: она создаёт ключи VAPID (закрытый ключ — в Vault).
    - Проверка: `select public.push_public_key();` возвращает длинную строку. В приложении «Настройки» → «Уведомления» → «Включить уведомления» → «Проверить уведомление».
+9. **Фото к делу.**
+   - **SQL Editor:** выполнить `migrations/20261023000100_task_photos.sql`, затем `sql/photo_live.sql` (удаление фото через 7 дней, раз в час).
+   - Проверка: `select jobname, schedule from cron.job where jobname = 'zb-photo-purge';` возвращает строку.

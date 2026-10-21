@@ -78,6 +78,7 @@ export default function TaskEdit() {
           windowStart: null,
           windowEnd: null,
           needsApproval: false,
+          needsPhoto: false,
           enabled: true,
         }}
       />
@@ -105,6 +106,7 @@ export default function TaskEdit() {
         windowStart: task.window_start,
         windowEnd: task.window_end,
         needsApproval: task.needs_approval,
+        needsPhoto: task.needs_photo,
         enabled: task.enabled,
       }}
     />
@@ -257,7 +259,15 @@ function TaskForm({ initial }: { initial: TaskInput }) {
           label={t.taskEdit.needsApproval}
           hint={t.taskEdit.needsApprovalHint}
           value={v.needsApproval}
-          onChange={(needsApproval) => set({ needsApproval })}
+          // No check means nobody looks at a photo: «Фото» goes off too.
+          onChange={(needsApproval) => set(needsApproval ? { needsApproval } : { needsApproval, needsPhoto: false })}
+        />
+        <SwitchRow
+          testID="task-photo"
+          label={t.taskEdit.needsPhoto}
+          hint={t.taskEdit.needsPhotoHint}
+          value={v.needsPhoto}
+          onChange={(needsPhoto) => set(needsPhoto ? { needsPhoto, needsApproval: true } : { needsPhoto })}
         />
         <SwitchRow label={t.taskEdit.enabled} value={v.enabled} onChange={(enabled) => set({ enabled })} />
       </Card>

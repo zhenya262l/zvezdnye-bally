@@ -10,6 +10,7 @@ import { Button } from './Button';
 import { ButtonRow } from './ButtonRow';
 import { Chip } from './Chip';
 import { T } from './T';
+import { TaskPhoto } from './TaskPhoto';
 
 type Props = {
   item: QueueItem;
@@ -68,6 +69,10 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
           </T>
         </View>
       </View>
+      {item.has_photo ? (
+        // A request waiting for a signature shows its photo at once.
+        <TaskPhoto completionId={item.id} title={item.title} auto={item.status === 'pending'} />
+      ) : null}
       {item.status === 'pending' && onDecide ? (
         <ButtonRow>
           <Button testID={`sign-${item.id}`} title={t.approvals.sign} onPress={() => onDecide(true)} loading={busy} />

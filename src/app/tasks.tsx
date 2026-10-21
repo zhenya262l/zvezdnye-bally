@@ -197,6 +197,14 @@ export default function Tasks() {
                       selected={task.needs_approval}
                       onPress={() => void run(() => api.setTaskApproval(task.id, !task.needs_approval))}
                     />
+                    <Chip
+                      multi
+                      testID={`photo-${task.id}`}
+                      label={task.needs_photo ? t.tasks.photoOn : t.tasks.photoOff}
+                      color={brand.violet}
+                      selected={task.needs_photo}
+                      onPress={() => void run(() => api.setTaskPhoto(task.id, !task.needs_photo))}
+                    />
                   </View>
                 </View>
               ))}

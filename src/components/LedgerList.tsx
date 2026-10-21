@@ -5,6 +5,7 @@ import { formatDayMonth } from '@/lib/dates';
 import { t } from '@/strings.ru';
 import { space, usePalette } from '@/theme';
 import { T } from './T';
+import { TaskPhoto } from './TaskPhoto';
 
 /** History of points: every ledger entry with date, reason and amount. */
 type Props = { rows: LedgerRow[]; loading?: boolean; failed?: boolean };
@@ -27,6 +28,7 @@ export function LedgerList({ rows, loading, failed }: Props) {
               {r.comment ? ` · ${r.comment}` : ''}
               {r.completion?.praise ? ` · ${t.history.praise(r.completion.praise)}` : ''}
             </T>
+            {r.completion?.has_photo ? <TaskPhoto completionId={r.completion.id} title={r.title} /> : null}
           </View>
           <T v="big" color={r.delta > 0 ? p.successText : p.danger}>
             {r.delta > 0 ? `+${r.delta}` : `−${Math.abs(r.delta)}`}

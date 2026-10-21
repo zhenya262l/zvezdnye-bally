@@ -79,6 +79,11 @@ export const t = {
     invalid_subscription: 'Телефон не смог подписаться на уведомления. Попробуйте ещё раз.',
     pushNotReady: 'Уведомления ещё настраиваются на сервере. Попробуйте через минуту.',
     pushFailed: 'Не получилось включить уведомления. Проверьте интернет и попробуйте ещё раз.',
+    photo_required: 'Для этого дела нужно фото.',
+    photo_invalid: 'Фото не получилось прочитать. Можно сфотографировать ещё раз.',
+    photo_too_big: 'Фото получилось слишком большим. Можно сфотографировать ещё раз.',
+    photo_unreadable: 'Не получилось открыть фото. Можно сфотографировать ещё раз.',
+    photo_gone: 'Фото уже удалено: оно хранится 7 дней после подписи.',
   } as Record<string, string>,
 
   install: {
@@ -189,6 +194,11 @@ export const t = {
     praises: ['Умница!', 'Молодец!', 'Горжусь тобой!', 'Так держать!'] as const,
     praised: (name: string, text: string) => `Похвала: ${text} (${name})`,
     points: (n: number) => `+${n}`,
+    photoShow: '📷 Посмотреть фото',
+    photoLoading: 'Загружаю фото…',
+    photoAlt: (title: string) => `Фото к делу: ${title}`,
+    photoOpen: 'Открыть фото крупно',
+    photoClose: 'Закрыть',
   },
 
   kids: {
@@ -277,6 +287,8 @@ export const t = {
     enabledOff: 'Выключено',
     checkOn: 'С проверкой',
     checkOff: 'Без проверки',
+    photoOn: '📷 С фото',
+    photoOff: 'Без фото',
     checkAll: 'Проверка родителем для всех дел',
     checkAllHint: 'Без проверки баллы начисляются сразу после «Сделала». С проверкой — после подписи родителя.',
     checkAllOn: 'Включить',
@@ -308,6 +320,9 @@ export const t = {
     windowTo: 'До',
     needsApproval: 'Нужна проверка родителя',
     needsApprovalHint: 'Если выключено, баллы начисляются сразу после «Сделала».',
+    needsPhoto: 'Нужно фото',
+    needsPhotoHint:
+      'Дочка фотографирует результат, например убранную комнату. Проверка родителя включится сама. Фото удаляется через 7 дней после подписи.',
     enabled: 'Дело включено',
     delete: 'Удалить дело',
     deleteTitle: 'Удалить дело?',
@@ -450,7 +465,16 @@ export const t = {
     todaySoon: 'Скоро здесь появятся твои дела. За каждое дело — звёздные баллы!',
     noTasksToday: 'На сегодня дел нет. Отдыхай!',
     done: 'Сделала',
+    donePhoto: '📷 Сделала',
     pending: 'Ждёт подписи',
+    photoTitle: (title: string) => `Сфотографируй: ${title}`,
+    photoLead: 'Сделай фото того, что получилось. Фото увидят родители.',
+    photoTake: '📷 Сделать фото',
+    photoRetake: 'Переснять',
+    photoSend: 'Отправить',
+    photoPreview: 'Твоё фото',
+    photoPreparing: 'Готовлю фото…',
+    photoWebOnly: 'Фото пока можно сделать только в приложении на телефоне.',
     doneGroup: (done: number, rejected: number) =>
       [done ? `Сделано: ${done}` : '', rejected ? `${done ? 'не' : 'Не'} засчитано: ${rejected}` : '']
         .filter(Boolean)

@@ -53,7 +53,7 @@ export function TaskRow({ task, busy, onDone, rowRef, error }: Props) {
       <Pressable
         testID={`done-${task.id}`}
         accessibilityRole="button"
-        accessibilityLabel={`${t.child.done}: ${task.title}`}
+        accessibilityLabel={`${task.needs_photo ? t.child.donePhoto : t.child.done}: ${task.title}`}
         disabled={busy}
         onPress={onDone}
         style={({ pressed }) => [
@@ -65,7 +65,7 @@ export function TaskRow({ task, busy, onDone, rowRef, error }: Props) {
           <ActivityIndicator color={onColor(brand.coral)} />
         ) : (
           <T v="bodyBold" color={onColor(brand.coral)} center>
-            {t.child.done}
+            {task.needs_photo ? t.child.donePhoto : t.child.done}
           </T>
         )}
       </Pressable>

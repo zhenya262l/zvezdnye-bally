@@ -8,9 +8,15 @@ import { T } from './T';
 import { TaskPhoto } from './TaskPhoto';
 
 /** History of points: every ledger entry with date, reason and amount. */
-type Props = { rows: LedgerRow[]; loading?: boolean; failed?: boolean };
+type Props = {
+  rows: LedgerRow[];
+  loading?: boolean;
+  failed?: boolean;
+  /** A parent may delete photos of tasks («Удалить фото»). */
+  canDeletePhotos?: boolean;
+};
 
-export function LedgerList({ rows, loading, failed }: Props) {
+export function LedgerList({ rows, loading, failed, canDeletePhotos }: Props) {
   const p = usePalette();
   if (loading) return <T muted>{t.common.loading}</T>;
   if (failed && rows.length === 0) return <T muted>{t.child.historyError}</T>;
@@ -28,7 +34,9 @@ export function LedgerList({ rows, loading, failed }: Props) {
               {r.comment ? ` · ${r.comment}` : ''}
               {r.completion?.praise ? ` · ${t.history.praise(r.completion.praise)}` : ''}
             </T>
-            {r.completion?.has_photo ? <TaskPhoto completionId={r.completion.id} title={r.title} /> : null}
+            {r.completion?.has_photo ? (
+              <TaskPhoto completionId={r.completion.id} title={r.title} canDelete={canDeletePhotos} />
+            ) : null}
           </View>
           <T v="big" color={r.delta > 0 ? p.successText : p.danger}>
             {r.delta > 0 ? `+${r.delta}` : `−${Math.abs(r.delta)}`}

@@ -262,3 +262,26 @@ test('clients cannot call the photo helpers or read the photo table', async () =
   const purge = await a.c.rpc('purge_task_photos');
   assert.ok(purge.error);
 });
+
+test('a parent deletes a photo at once; the child and other families cannot', async () => {
+  const { p, a, task } = await setup('ph-remove');
+  const done = await a.c.rpc('mark_done', { p_task_id: task.id, p_photo: fakeJpeg() });
+  const id = done.data.completion_id;
+
+  const byChild = await a.c.rpc('delete_task_photo', { p_completion_id: id });
+  assert.match(byChild.error?.message ?? '', /parent_only/);
+  const stranger = await familyWithKids('ph-remove-stranger');
+  const byStranger = await stranger.c.rpc('delete_task_photo', { p_completion_id: id });
+  assert.match(byStranger.error?.message ?? '', /photo_gone/);
+  let left = await db.query('select count(*)::int n from private.task_photos where completion_id = $1', [id]);
+  assert.equal(left.rows[0].n, 1, 'still there');
+
+  const r = await p.c.rpc('delete_task_photo', { p_completion_id: id });
+  assert.equal(r.error, null);
+  left = await db.query('select count(*)::int n from private.task_photos where completion_id = $1', [id]);
+  assert.equal(left.rows[0].n, 0);
+  const row = await db.query('select status, has_photo from public.task_completions where id = $1', [id]);
+  assert.deepEqual(row.rows[0], { status: 'pending', has_photo: false }, 'the request stays, without the photo');
+  const again = await p.c.rpc('delete_task_photo', { p_completion_id: id });
+  assert.match(again.error?.message ?? '', /photo_gone/);
+});

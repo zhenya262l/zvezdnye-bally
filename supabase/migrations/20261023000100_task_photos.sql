@@ -6,6 +6,8 @@
 -- * Such a task always has the parent's check: without a signature nobody
 --   would look at the photo. Switching the check off switches the photo off.
 -- * A photo is kept 7 days after the parent's decision, then deleted.
+--   A parent can delete any photo earlier («Удалить фото»), e.g. if the child
+--   herself got into the picture (consent text, item 4).
 --
 -- Photos are stored in the database (private.task_photos), not in Supabase
 -- Storage. The phone shrinks a photo to about 1280 px (usually 150–400 KB) and
@@ -200,6 +202,23 @@ begin
     from gone where c.id = gone.completion_id;
   get diagnostics v_count = row_count;
   return v_count;
+end
+$$;
+
+-- A parent deletes a photo at once: the points and the history entry stay.
+create or replace function public.delete_task_photo(p_completion_id uuid)
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_family uuid := private.require_parent();
+begin
+  delete from private.task_photos p
+   where p.completion_id = p_completion_id and p.family_id = v_family;
+  if not found then
+    raise exception 'photo_gone';
+  end if;
+  update public.task_completions c set has_photo = false where c.id = p_completion_id;
 end
 $$;
 
@@ -500,12 +519,14 @@ $$;
 revoke execute on function
   public.mark_done(uuid, text),
   public.task_photo(uuid),
+  public.delete_task_photo(uuid),
   public.save_task(uuid, uuid[], uuid, text, text, int, smallint[], time, time, boolean, boolean, boolean),
   public.set_task_photo(uuid, boolean)
 from public, anon;
 grant execute on function
   public.mark_done(uuid, text),
   public.task_photo(uuid),
+  public.delete_task_photo(uuid),
   public.save_task(uuid, uuid[], uuid, text, text, int, smallint[], time, time, boolean, boolean, boolean),
   public.set_task_photo(uuid, boolean)
 to authenticated;

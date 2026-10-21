@@ -287,6 +287,9 @@ export const api = {
       photo ? { p_task_id: taskId, p_photo: photo } : { p_task_id: taskId },
     ),
 
+  /** A parent deletes the photo of a request (the points stay). */
+  deleteTaskPhoto: (completionId: string) => rpc<null>('delete_task_photo', { p_completion_id: completionId }),
+
   /** The photo of a request, as a JPEG data URL. */
   taskPhoto: async (completionId: string) => {
     const r = await rpc<{ image: string; created_at: string }>('task_photo', { p_completion_id: completionId });

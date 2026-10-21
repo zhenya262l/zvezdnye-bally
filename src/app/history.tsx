@@ -85,7 +85,7 @@ export default function History() {
         </View>
         {f ? <Formula was={f.was} earned={f.earned} spent={f.spent} corrected={f.corrected} left={f.left} /> : null}
         <Card title={t.kids.history} accent={brand.sun}>
-          <LedgerList rows={ledger.data ?? []} loading={ledger.isPending} failed={ledger.isError} />
+          <LedgerList rows={ledger.data ?? []} loading={ledger.isPending} failed={ledger.isError} canDeletePhotos />
         </Card>
         {fixOpen ? (
           <Card title={t.history.correctionTitle} accent={brand.violet}>

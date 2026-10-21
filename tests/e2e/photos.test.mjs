@@ -176,9 +176,25 @@ test('the child sends a photo with «Сделала»; the parent sees it', asyn
   await P.getByTestId(`photo-thumb-${id}`).waitFor({ timeout: 10000 });
   await shot(P, '07-history-photo');
 
-  // After 7 days it is gone, and the history no longer offers it.
-  await sql(`update public.task_completions set decided_at = now() - interval '8 days' where id = $1`, [id]);
-  await sql('select private.purge_task_photos()');
+  // The parent deletes the photo from the history: the entry and points stay.
+  await P.getByTestId(`photo-thumb-${id}`).click();
+  await P.getByTestId('photo-delete').click();
+  await P.getByTestId('photo-delete-yes').waitFor();
+  await P.waitForTimeout(400); // the viewer fades in
+  await shot(P, '07b-delete-ask');
+  await P.getByTestId('photo-delete-yes').click();
+  await P.getByTestId('photo-viewer').waitFor({ state: 'detached', timeout: 10000 });
+  await P.getByTestId(`photo-thumb-${id}`).waitFor({ state: 'detached', timeout: 10000 });
+  const removed = await sql(
+    `select c.has_photo, (select count(*)::int from private.task_photos p where p.completion_id = c.id) n,
+            (select delta from public.ledger l where l.completion_id = c.id) delta
+       from public.task_completions c where c.id = $1`,
+    [id],
+  );
+  assert.deepEqual(removed.rows[0], { has_photo: false, n: 0, delta: t.points });
+  await shot(P, '08-history-photo-deleted');
+
+  // Without the photo the history no longer offers it (as after 7 days).
   await P.reload();
   await P.getByText(TASK).first().waitFor({ timeout: 15000 });
   assert.equal(await P.getByTestId(`photo-show-${id}`).count(), 0);

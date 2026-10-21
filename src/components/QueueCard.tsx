@@ -71,7 +71,7 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
       </View>
       {item.has_photo ? (
         // A request waiting for a signature shows its photo at once.
-        <TaskPhoto completionId={item.id} title={item.title} auto={item.status === 'pending'} />
+        <TaskPhoto completionId={item.id} title={item.title} auto={item.status === 'pending'} canDelete />
       ) : null}
       {item.status === 'pending' && onDecide ? (
         <ButtonRow>

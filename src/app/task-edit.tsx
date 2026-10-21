@@ -257,7 +257,7 @@ function TaskForm({ initial }: { initial: TaskInput }) {
         ) : null}
         <SwitchRow
           label={t.taskEdit.needsApproval}
-          hint={t.taskEdit.needsApprovalHint}
+          hint={v.needsPhoto ? t.taskEdit.needsApprovalPhotoHint : t.taskEdit.needsApprovalHint}
           value={v.needsApproval}
           // No check means nobody looks at a photo: «Фото» goes off too.
           onChange={(needsApproval) => set(needsApproval ? { needsApproval } : { needsApproval, needsPhoto: false })}

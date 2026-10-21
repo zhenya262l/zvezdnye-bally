@@ -71,6 +71,7 @@ export function PhotoSheet({ task, sending, error, onSend, onClose }: Props) {
                 title={t.child.photoSend}
                 variant="accent"
                 loading={sending}
+                disabled={preparing}
                 onPress={() => onSend(photo)}
               />
               <PhotoPicker

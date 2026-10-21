@@ -8,7 +8,6 @@ import { useSession } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { radius, space, usePalette } from '@/theme';
 import { Button } from './Button';
-import { Chip } from './Chip';
 import { T } from './T';
 
 type Props = {
@@ -37,10 +36,10 @@ export function TaskPhoto({ completionId, title, auto }: Props) {
   if (!auto && !asked) {
     return (
       <View style={styles.row}>
-        <Chip
+        <Button
           testID={`photo-show-${completionId}`}
-          label={t.approvals.photoShow}
-          selected={false}
+          title={t.approvals.photoShow}
+          variant="secondary"
           onPress={() => setAsked(true)}
         />
       </View>
@@ -63,7 +62,7 @@ export function TaskPhoto({ completionId, title, auto }: Props) {
     <>
       <Pressable
         testID={`photo-thumb-${completionId}`}
-        accessibilityRole="imagebutton"
+        accessibilityRole="button"
         accessibilityLabel={`${t.approvals.photoAlt(title)}. ${t.approvals.photoOpen}`}
         onPress={() => setLarge(true)}>
         <Image source={{ uri: photo.data }} resizeMode="cover" style={[styles.thumb, { backgroundColor: p.cardAlt }]} />

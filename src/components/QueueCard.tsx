@@ -34,13 +34,15 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
       ? t.approvals.yesterday
       : formatDayMonth(item.for_date);
 
+  // «Не засчитано» stands out: red frame, ✕ and bold red text (not colour alone).
+  const rejected = item.status === 'rejected';
   let decided: string | null = null;
   if (item.status !== 'pending' && item.decided_at) {
     const time = formatTime(item.decided_at, tz);
-    if (item.auto_approved) decided = t.approvals.autoSigned(time);
+    if (item.auto_approved) decided = `✓ ${t.approvals.autoSigned(time)}`;
     else if (item.status === 'approved')
-      decided = t.approvals.signedBy(item.decided_by_name || t.common.formerParent, time);
-    else decided = t.approvals.rejectedBy(item.decided_by_name || t.common.formerParent, time);
+      decided = `✓ ${t.approvals.signedBy(item.decided_by_name || t.common.formerParent, time)}`;
+    else decided = `✕ ${t.approvals.rejectedBy(item.decided_by_name || t.common.formerParent, time)}`;
   }
 
   return (
@@ -50,9 +52,9 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
         styles.card,
         {
           backgroundColor: p.card,
-          borderColor: highlighted ? brand.coral : item.child_color,
-          borderWidth: highlighted ? 3 : 2,
-          opacity: item.status === 'pending' ? 1 : 0.85,
+          borderColor: highlighted ? brand.coral : rejected ? p.danger : item.child_color,
+          borderWidth: highlighted || rejected ? 3 : 2,
+          opacity: item.status === 'pending' || rejected ? 1 : 0.85,
         },
       ]}>
       <View style={styles.top}>
@@ -63,8 +65,9 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
             {[item.child_name, dayLabel, formatTime(item.created_at, tz)].filter(Boolean).join(' · ')}
           </T>
         </View>
-        <View style={[styles.points, { backgroundColor: brand.sun }]}>
-          <T v="bodyBold" color={brand.ocean}>
+        {/* Not credited: the points are crossed out. */}
+        <View style={[styles.points, { backgroundColor: rejected ? p.cardAlt : brand.sun }]}>
+          <T v="bodyBold" color={rejected ? p.textMuted : brand.ocean} style={rejected ? styles.crossed : undefined}>
             {t.approvals.points(item.points)}
           </T>
         </View>
@@ -85,7 +88,10 @@ export function QueueCard({ item, today, tz, highlighted, busy, onDecide, onPrai
           />
         </ButtonRow>
       ) : decided ? (
-        <T v="small" color={item.status === 'approved' ? p.successText : p.textMuted}>
+        <T
+          testID={`decided-${item.id}`}
+          v={rejected ? 'label' : 'small'}
+          color={item.status === 'approved' ? p.successText : p.danger}>
           {decided}
         </T>
       ) : null}
@@ -130,4 +136,5 @@ const styles = StyleSheet.create({
   texts: { flex: 1, gap: 2 },
   points: { borderRadius: radius.pill, paddingHorizontal: space.m, paddingVertical: 2 },
   praise: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.s },
+  crossed: { textDecorationLine: 'line-through' },
 });

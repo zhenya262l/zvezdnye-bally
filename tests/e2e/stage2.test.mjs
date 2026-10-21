@@ -220,6 +220,10 @@ test('no-check tasks, praise, signatures within 5 seconds, bonus, editor, second
   await openDone(C, 'Дом и помощь');
   await C.getByText('Пока не засчитано — завтра получится').waitFor();
   assert.equal(await leftOf(C), 6);
+  // On the parent's screen the refusal stands out: red frame and «✕».
+  await flowers.getByText(/^✕ Не засчитано: Мама, \d\d:\d\d$/).waitFor({ timeout: 10000 });
+  const frame = await flowers.evaluate((el) => getComputedStyle(el).borderTopWidth);
+  assert.equal(frame, '3px');
   await shot(P, '10-parent-decided');
 
   // Surprise bonus: default 3, parent makes it 5.

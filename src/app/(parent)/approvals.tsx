@@ -7,14 +7,15 @@ import { PenIcon } from '@/components/art/Icons';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
+import { PurchaseCard } from '@/components/PurchaseCard';
 import { PushPrompt } from '@/components/PushPrompt';
 import { QueueCard } from '@/components/QueueCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
-import { api, errorText, type QueueItem } from '@/lib/api';
+import { api, errorText, type PurchaseItem, type QueueItem } from '@/lib/api';
 import { formatTime, todayISO } from '@/lib/dates';
-import { useParentQueue } from '@/lib/queries';
+import { useParentQueue, usePurchaseQueue } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { space, usePalette } from '@/theme';
@@ -25,7 +26,8 @@ export default function Approvals() {
   const uid = useSession((s) => s.session?.user.id);
   const who = useWho();
   const queue = useParentQueue();
-  const { id: highlightId } = useLocalSearchParams<{ id?: string }>();
+  const purchases = usePurchaseQueue();
+  const { id: highlightId, purchase: highlightPurchase } = useLocalSearchParams<{ id?: string; purchase?: string }>();
   const [busy, setBusy] = useState<string | null>(null);
   const [info, setInfo] = useState<ToastMsg>(null);
   const hideInfo = useCallback(() => setInfo(null), []);
@@ -42,13 +44,41 @@ export default function Approvals() {
   const decided = queue.data
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
+  const buyPending = (purchases.data ?? []).filter((x) => x.status === 'pending');
+  const buyDecided = (purchases.data ?? [])
+    .filter((x) => x.status !== 'pending')
+    .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
 
   // Waits for the new list, so a signed card does not flash its buttons again.
   const refresh = async () => {
     void qc.invalidateQueries({ queryKey: ['childDay', uid] });
     void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+    void qc.invalidateQueries({ queryKey: ['purchases', uid] });
     await qc.invalidateQueries({ queryKey: ['queue', uid] }).catch(() => undefined);
   };
+
+  async function decidePurchase(item: PurchaseItem, approve: boolean) {
+    setBusy(`buy-${item.id}`);
+    setInfo(null);
+    try {
+      const r = await api.decidePurchase(item.id, approve);
+      if (!r.changed && !r.decided_by_me) {
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name || t.common.formerParent;
+        setInfo({
+          text: r.status === 'rejected' ? t.shop.rejectedBy(name, time) : t.shop.signedBy(name, time),
+          kind: 'info',
+        });
+      }
+    } catch (e) {
+      setInfo({ text: errorText(e), kind: 'error' });
+    } finally {
+      await qc.invalidateQueries({ queryKey: ['purchases', uid] }).catch(() => undefined);
+      void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+      void qc.invalidateQueries({ queryKey: ['childDay', uid] });
+      setBusy(null);
+    }
+  }
 
   async function decide(item: QueueItem, approve: boolean) {
     setBusy(item.id);
@@ -116,7 +146,23 @@ export default function Approvals() {
             loading={busy === 'all'}
           />
         ) : null}
-        {pending.length === 0 ? (
+        {buyPending.length > 0 ? (
+          <>
+            <T v="h2">{t.shop.purchases}</T>
+            {buyPending.map((item) => (
+              <PurchaseCard
+                key={item.id}
+                item={item}
+                tz={tz}
+                highlighted={item.id === highlightPurchase}
+                busy={busy === `buy-${item.id}`}
+                onDecide={(approve) => decidePurchase(item, approve)}
+              />
+            ))}
+            {pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
+          </>
+        ) : null}
+        {pending.length === 0 && buyPending.length > 0 ? null : pending.length === 0 ? (
           <Card>
             <View style={styles.empty}>
               <PenIcon color={p.primary} size={44} />
@@ -141,11 +187,14 @@ export default function Approvals() {
             />
           ))
         )}
-        {decided.length > 0 ? (
+        {decided.length > 0 || buyDecided.length > 0 ? (
           <>
             <T v="h2" style={styles.section}>
               {t.approvals.decidedToday}
             </T>
+            {buyDecided.map((item) => (
+              <PurchaseCard key={item.id} item={item} tz={tz} highlighted={item.id === highlightPurchase} />
+            ))}
             {decided.map((item) => (
               <QueueCard
                 key={item.id}

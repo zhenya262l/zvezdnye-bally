@@ -140,6 +140,68 @@ export type LedgerRow = {
   completion: { id: string; praise: string | null; has_photo: boolean } | null;
 };
 
+/** A good in the family shop (parent's editor). */
+export type ShopItem = {
+  id: string;
+  title: string;
+  icon: string;
+  price: number;
+  kind: 'small' | 'big';
+  screen_minutes: number | null;
+  days: number[];
+  enabled: boolean;
+  sort_order: number;
+};
+
+export type ShopItemInput = {
+  id: string | null;
+  title: string;
+  icon: string;
+  price: number;
+  kind: 'small' | 'big';
+  days: number[];
+  enabled: boolean;
+};
+
+export type PurchaseStatus = 'pending' | 'approved' | 'rejected';
+
+/** The child's shop today: what she can still spend, goods, her requests. */
+export type ChildShop = {
+  child_id: string;
+  balance: number;
+  /** Balance minus purchases waiting for a signature. */
+  available: number;
+  items: { id: string; title: string; icon: string; price: number; kind: 'small' | 'big'; screen_minutes: number | null }[];
+  requests: {
+    id: string;
+    title: string;
+    icon: string;
+    price: number;
+    status: PurchaseStatus;
+    created_at: string;
+    decided_at: string | null;
+  }[];
+};
+
+/** A purchase request on the parent's «Подписи». */
+export type PurchaseItem = {
+  id: string;
+  child_id: string;
+  child_name: string;
+  child_color: string;
+  child_avatar: string;
+  title: string;
+  icon: string;
+  price: number;
+  kind: 'small' | 'big';
+  status: PurchaseStatus;
+  created_at: string;
+  decided_at: string | null;
+  decided_by_name: string | null;
+  /** Points she can spend, counting this request as not yet taken. */
+  available: number;
+};
+
 export type FamilyAccess = {
   is_admin: boolean;
   member: boolean;
@@ -394,6 +456,51 @@ export const api = {
     if (error) throw toApiError(error);
     return data as unknown as LedgerRow[]; // "completion" is one row (many-to-one)
   },
+
+  // Stage 3: the shop
+
+  listShopItems: async (): Promise<ShopItem[]> => {
+    const { data, error } = await supabase
+      .from('shop_items')
+      .select('id,title,icon,price,kind,screen_minutes,days,enabled,sort_order')
+      .is('deleted_at', null)
+      .order('kind')
+      .order('price')
+      .order('sort_order');
+    if (error) throw toApiError(error);
+    return data as ShopItem[];
+  },
+
+  saveShopItem: (v: ShopItemInput) =>
+    rpc<string>('save_shop_item', {
+      p_item_id: v.id,
+      p_title: v.title.trim(),
+      p_icon: v.icon,
+      p_price: v.price,
+      p_kind: v.kind,
+      p_days: v.days,
+      p_enabled: v.enabled,
+    }),
+
+  setShopItemEnabled: (id: string, enabled: boolean) =>
+    rpc<null>('set_shop_item_enabled', { p_item_id: id, p_enabled: enabled }),
+
+  deleteShopItem: (id: string) => rpc<null>('delete_shop_item', { p_item_id: id }),
+
+  childShop: () => rpc<ChildShop>('child_shop'),
+
+  buy: (itemId: string) => rpc<{ id: string; status: PurchaseStatus; available: number }>('buy', { p_item_id: itemId }),
+
+  purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
+
+  decidePurchase: (id: string, approve: boolean) =>
+    rpc<{
+      changed: boolean;
+      status: PurchaseStatus;
+      decided_by_name?: string | null;
+      decided_at?: string | null;
+      decided_by_me?: boolean;
+    }>('decide_purchase', { p_request_id: id, p_approve: approve }),
 
   createParentInvite: () => rpc<{ code: string; expires_at: string }>('create_parent_invite'),
 

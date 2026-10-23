@@ -49,6 +49,23 @@ export function useParentQueue() {
   });
 }
 
+export function useChildShop() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['shop', uid], queryFn: api.childShop, enabled: !!uid, refetchInterval: live });
+}
+
+export function usePurchaseQueue() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['purchases', uid], queryFn: api.purchaseQueue, enabled: !!uid, refetchInterval: live });
+}
+
+export function useShopItems() {
+  const uid = useSession((s) => s.session?.user.id);
+  return useQuery({ queryKey: ['shopItems', uid], queryFn: api.listShopItems, enabled: !!uid });
+}
+
 export function useSections() {
   const uid = useSession((s) => s.session?.user.id);
   return useQuery({ queryKey: ['sections', uid], queryFn: api.listSections, enabled: !!uid });

@@ -32,6 +32,20 @@ export default function Settings() {
         </View>
         <ChevronIcon color={p.textMuted} />
       </Pressable>
+      <Pressable
+        testID="settings-shop"
+        accessibilityRole="button"
+        onPress={() => router.push('/shop-items')}
+        style={({ pressed }) => [styles.bigRow, { backgroundColor: p.card, borderColor: brand.coral, opacity: pressed ? 0.8 : 1 }]}>
+        <T style={styles.emoji}>🛍️</T>
+        <View style={styles.flex}>
+          <T v="bodyBold">{t.settings.shop}</T>
+          <T v="small" muted>
+            {t.settings.shopHint}
+          </T>
+        </View>
+        <ChevronIcon color={p.textMuted} />
+      </Pressable>
       <NotificationsCard role="parent" />
       <Card title={t.settings.profiles} accent={brand.violet}>
         <T v="small" muted>

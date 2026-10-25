@@ -37,3 +37,4 @@
    - **Edge Functions → Deploy a new function → Via Editor.** Имя `passkey`, код из `functions/passkey/index.ts` → **Deploy function**. В настройках функции выключить проверку JWT. Секреты не нужны.
    - Выложить сайт.
    - Проверка: `select rp_id, origins from private.passkey_config;` возвращает `zhenya262l.github.io` и `{https://zhenya262l.github.io}`. В приложении «Настройки» → «ПИН для покупок» → «Включить Face ID».
+13. **Копилка мечты (этап 4, часть 1).** **SQL Editor:** выполнить `migrations/20261027000100_goals.sql`, затем выложить сайт. Сначала база, потом сайт: новая версия сайта без миграции не откроет «Мечты».

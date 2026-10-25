@@ -58,7 +58,9 @@ export function PurchaseCard({ item, tz, highlighted, busy, onDecide }: Props) {
       {item.status === 'pending' && onDecide ? (
         <>
           <T v="small" muted>
-            {t.shop.canSpend(item.child_name, item.available)}
+            {item.goal_id
+              ? t.dreams.heldNote(item.child_name, item.available)
+              : t.shop.canSpend(item.child_name, item.available)}
           </T>
           <ButtonRow>
             <Button

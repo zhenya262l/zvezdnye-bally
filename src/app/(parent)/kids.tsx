@@ -8,6 +8,7 @@ import { Banner } from '@/components/Banner';
 import { BonusModal } from '@/components/BonusModal';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { KidDreams } from '@/components/GoalCards';
 import { LoadError, Loading } from '@/components/Loading';
 import { PairingCodeModal } from '@/components/PairingCodeModal';
 import { Screen } from '@/components/Screen';
@@ -64,6 +65,7 @@ export default function Kids() {
               ) : null}
             </View>
           </View>
+          <KidDreams childId={c.id} />
           <Button
             testID={`bonus-${c.id}`}
             title={t.kids.bonus}

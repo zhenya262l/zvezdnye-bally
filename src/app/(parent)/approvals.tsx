@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { PenIcon } from '@/components/art/Icons';
+import { GoalProposalCard } from '@/components/GoalCards';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
@@ -18,7 +19,7 @@ import { Toast, type ToastMsg } from '@/components/Toast';
 import { api, errorText, type PurchaseItem, type QueueItem } from '@/lib/api';
 import type { RequestOptions } from '@/platform/biometric';
 import { formatTime, todayISO } from '@/lib/dates';
-import { useParentQueue, usePurchaseQueue } from '@/lib/queries';
+import { useGoalProposals, useParentQueue, usePurchaseQueue } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { space, usePalette } from '@/theme';
@@ -30,7 +31,12 @@ export default function Approvals() {
   const who = useWho();
   const queue = useParentQueue();
   const purchases = usePurchaseQueue();
-  const { id: highlightId, purchase: highlightPurchase } = useLocalSearchParams<{ id?: string; purchase?: string }>();
+  const proposals = useGoalProposals();
+  const {
+    id: highlightId,
+    purchase: highlightPurchase,
+    goal: highlightGoal,
+  } = useLocalSearchParams<{ id?: string; purchase?: string; goal?: string }>();
   const [busy, setBusy] = useState<string | null>(null);
   const [info, setInfo] = useState<ToastMsg>(null);
   // Signing a purchase: the PIN dialog for this request.
@@ -78,6 +84,7 @@ export default function Approvals() {
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
   const buyPending = (purchases.data ?? []).filter((x) => x.status === 'pending');
+  const dreams = proposals.data ?? [];
   const buyDecided = (purchases.data ?? [])
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
@@ -258,6 +265,20 @@ export default function Approvals() {
             loading={busy === 'all'}
           />
         ) : null}
+        {dreams.length > 0 ? (
+          <>
+            <T v="h2">{t.dreams.proposals}</T>
+            {dreams.map((item) => (
+              <GoalProposalCard
+                key={item.id}
+                item={item}
+                highlighted={item.id === highlightGoal}
+                onDone={(text, kind) => setInfo({ text, kind })}
+              />
+            ))}
+            {buyPending.length === 0 && pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
+          </>
+        ) : null}
         {buyPending.length > 0 ? (
           <>
             <T v="h2">{t.shop.purchases}</T>
@@ -274,7 +295,7 @@ export default function Approvals() {
             {pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
           </>
         ) : null}
-        {pending.length === 0 && buyPending.length > 0 ? null : pending.length === 0 ? (
+        {pending.length === 0 && (buyPending.length > 0 || dreams.length > 0) ? null : pending.length === 0 ? (
           <Card>
             <View style={styles.empty}>
               <PenIcon color={p.primary} size={44} />

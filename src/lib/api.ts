@@ -186,8 +186,12 @@ export type PurchaseStatus = 'pending' | 'approved' | 'rejected';
 export type ChildShop = {
   child_id: string;
   balance: number;
-  /** Balance minus purchases waiting for a signature. */
+  /** Balance minus the piggy bank, purchases waiting for a signature and points taken back today. */
   available: number;
+  /** Points in the piggy bank. */
+  held: number;
+  /** Points taken out of the piggy bank today: spendable from tomorrow. */
+  back_today: number;
   /** Screen minutes today: limit, bought (signed or waiting), left. */
   screen: { limit: number; used: number; left: number };
   items: {
@@ -219,13 +223,53 @@ export type PurchaseItem = {
   title: string;
   icon: string;
   price: number;
-  kind: 'small' | 'big';
+  kind: 'small' | 'big' | 'dream';
+  /** Set for a dream from the piggy bank. */
+  goal_id: string | null;
   status: PurchaseStatus;
   created_at: string;
   decided_at: string | null;
   decided_by_name: string | null;
-  /** Points she can spend, counting this request as not yet taken. */
+  /** Points she can spend, counting this request as not yet taken (a dream: its piggy bank). */
   available: number;
+};
+
+export type GoalStatus = 'proposed' | 'active' | 'rejected' | 'bought' | 'cancelled';
+
+/** The piggy bank of one child. */
+export type ChildGoals = {
+  child_id: string;
+  balance: number;
+  held: number;
+  /** Points she may put aside now. */
+  free: number;
+  /** Points she can spend in the shop now. */
+  available: number;
+  back_today: number;
+  goals: {
+    id: string;
+    title: string;
+    icon: string;
+    price: number | null;
+    status: GoalStatus;
+    held: number;
+    created_at: string;
+    closed_at: string | null;
+    pending_purchase_id: string | null;
+  }[];
+};
+
+/** A new dream waiting for the parent's price. */
+export type GoalProposal = {
+  id: string;
+  child_id: string;
+  child_name: string;
+  child_color: string;
+  child_avatar: string;
+  title: string;
+  icon: string;
+  created_at: string;
+  suggested_price: number | null;
 };
 
 export type FamilyAccess = {
@@ -525,6 +569,33 @@ export const api = {
   buy: (itemId: string) => rpc<{ id: string; status: PurchaseStatus; available: number }>('buy', { p_item_id: itemId }),
 
   purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
+
+  childGoals: (childId?: string) => rpc<ChildGoals>('child_goals', childId ? { p_child_id: childId } : {}),
+
+  proposeGoal: (title: string | null, icon: string | null, shopItemId?: string) =>
+    rpc<string>('propose_goal', { p_title: title, p_icon: icon, p_shop_item_id: shopItemId ?? null }),
+
+  /** Positive: put aside; negative: take back. */
+  moveGoalPoints: (goalId: string, points: number) =>
+    rpc<{ held: number; free: number; available: number }>('move_goal_points', {
+      p_goal_id: goalId,
+      p_points: points,
+    }),
+
+  buyGoal: (goalId: string) => rpc<{ id: string; status: PurchaseStatus }>('buy_goal', { p_goal_id: goalId }),
+
+  cancelGoal: (goalId: string) =>
+    rpc<{ changed: boolean; status: GoalStatus; returned?: number }>('cancel_goal', { p_goal_id: goalId }),
+
+  goalProposals: () => rpc<GoalProposal[]>('goal_proposals'),
+
+  decideGoal: (goalId: string, approve: boolean, price?: number) =>
+    rpc<{ changed: boolean; status: GoalStatus; decided_by_name?: string | null; decided_by_me?: boolean }>(
+      'decide_goal',
+      approve
+        ? { p_goal_id: goalId, p_approve: true, p_price: price ?? null }
+        : { p_goal_id: goalId, p_approve: false },
+    ),
 
   /** Signing (approve) needs the parent's PIN; «Не подписывать» does not. */
   decidePurchase: (id: string, approve: boolean, pin?: string, passkey?: string) =>

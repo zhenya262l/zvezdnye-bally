@@ -36,6 +36,10 @@ export default function Shop() {
 
   const tz = who.data?.member?.timezone;
   const { available, balance, items, requests, screen } = shop.data;
+  const held = shop.data.held ?? 0;
+  const backToday = shop.data.back_today ?? 0;
+  // Points in purchases waiting for a signature (the rest is in the piggy bank).
+  const waiting = Math.max(0, balance - available - held - backToday);
   const groups = [
     { kind: 'small' as const, title: t.shop.small, color: brand.coral },
     { kind: 'big' as const, title: t.shop.big, color: brand.violet },
@@ -64,9 +68,19 @@ export default function Shop() {
           <T v="big" color={brand.ocean} testID="shop-available">
             {t.shop.balance(available)}
           </T>
-          {balance > available ? (
+          {waiting > 0 ? (
             <T v="small" color={brand.ocean}>
-              {t.shop.waitingNote(balance - available)}
+              {t.shop.waitingNote(waiting)}
+            </T>
+          ) : null}
+          {held > 0 ? (
+            <T v="small" color={brand.ocean} testID="shop-held">
+              {t.dreams.inPiggy(held)}
+            </T>
+          ) : null}
+          {backToday > 0 ? (
+            <T v="small" color={brand.ocean} center>
+              {t.dreams.backTomorrow(backToday)}
             </T>
           ) : null}
         </View>

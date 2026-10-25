@@ -61,6 +61,29 @@ export function usePurchaseQueue() {
   return useQuery({ queryKey: ['purchases', uid], queryFn: api.purchaseQueue, enabled: !!uid, refetchInterval: live });
 }
 
+/** Without childId: the signed-in child's own piggy bank. */
+export function useChildGoals(childId?: string) {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({
+    queryKey: ['goals', uid, childId ?? 'me'],
+    queryFn: () => api.childGoals(childId),
+    enabled: !!uid,
+    refetchInterval: live,
+  });
+}
+
+export function useGoalProposals() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({
+    queryKey: ['goalProposals', uid],
+    queryFn: api.goalProposals,
+    enabled: !!uid,
+    refetchInterval: live,
+  });
+}
+
 export function useShopItems() {
   const uid = useSession((s) => s.session?.user.id);
   return useQuery({ queryKey: ['shopItems', uid], queryFn: api.listShopItems, enabled: !!uid });

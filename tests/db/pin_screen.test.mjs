@@ -79,7 +79,7 @@ test('changing the PIN needs the old one, or a fresh sign-in by email code', asy
   await p.c.rpc('set_parent_pin', { p_new: '1234' });
   // The test signed in just now: a forgotten PIN can be set again.
   let me = await p.c.rpc('my_pin');
-  assert.deepEqual(me.data, { set: true, locked: false, can_reset: true });
+  assert.deepEqual(me.data, { set: true, locked: false, can_reset: true, passkeys: 0 });
   assert.equal((await p.c.rpc('set_parent_pin', { p_new: '5555' })).data.ok, true);
 
   // Later than 10 minutes after the sign-in: the old PIN is needed.

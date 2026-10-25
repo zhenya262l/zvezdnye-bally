@@ -1,5 +1,6 @@
 import { AuthError } from '@supabase/supabase-js';
 
+import type { CreateOptions, PasskeyAnswer, RequestOptions } from '@/platform/biometric';
 import { t } from '@/strings.ru';
 import { supabase } from './supabase';
 
@@ -168,7 +169,16 @@ export type ShopItemInput = {
 /** Screen time per day (minutes): today's limit and a change from tomorrow. */
 export type ScreenSettings = { today: number; next: number | null; from: string | null };
 
-export type PinState = { set: boolean; locked: boolean; can_reset: boolean };
+export type PinState = { set: boolean; locked: boolean; can_reset: boolean; passkeys: number };
+
+/** A one-time Face ID challenge from the server, with the options for the phone. */
+export type PasskeyStart<O> = {
+  ok: boolean;
+  error?: string;
+  tries_left?: number | null;
+  challenge_id?: string;
+  options?: O;
+};
 
 export type PurchaseStatus = 'pending' | 'approved' | 'rejected';
 
@@ -180,7 +190,14 @@ export type ChildShop = {
   available: number;
   /** Screen minutes today: limit, bought (signed or waiting), left. */
   screen: { limit: number; used: number; left: number };
-  items: { id: string; title: string; icon: string; price: number; kind: 'small' | 'big'; screen_minutes: number | null }[];
+  items: {
+    id: string;
+    title: string;
+    icon: string;
+    price: number;
+    kind: 'small' | 'big';
+    screen_minutes: number | null;
+  }[];
   requests: {
     id: string;
     title: string;
@@ -242,7 +259,10 @@ export type FamilyRequest = {
 
 /** Error with a key from t.errors, so screens can show a friendly message. */
 export class ApiError extends Error {
-  constructor(public key: string, message?: string) {
+  constructor(
+    public key: string,
+    message?: string,
+  ) {
     super(message ?? key);
   }
 }
@@ -430,7 +450,8 @@ export const api = {
       p_needs_photo: v.needsPhoto,
     }),
 
-  setTaskEnabled: (id: string, enabled: boolean) => rpc<null>('set_task_enabled', { p_task_id: id, p_enabled: enabled }),
+  setTaskEnabled: (id: string, enabled: boolean) =>
+    rpc<null>('set_task_enabled', { p_task_id: id, p_enabled: enabled }),
 
   /** Parent's check for one task: true = points only after the parent signs. */
   setTaskApproval: (id: string, needs: boolean) => rpc<null>('set_task_approval', { p_task_id: id, p_needs: needs }),
@@ -458,7 +479,9 @@ export const api = {
   listLedger: async (childId: string): Promise<LedgerRow[]> => {
     const { data, error } = await supabase
       .from('ledger')
-      .select('id,child_id,kind,delta,for_date,title,comment,created_at,completion:task_completions(id,praise,has_photo)')
+      .select(
+        'id,child_id,kind,delta,for_date,title,comment,created_at,completion:task_completions(id,praise,has_photo)',
+      )
       .eq('child_id', childId)
       .order('id', { ascending: false })
       .limit(200);
@@ -504,7 +527,7 @@ export const api = {
   purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
 
   /** Signing (approve) needs the parent's PIN; «Не подписывать» does not. */
-  decidePurchase: (id: string, approve: boolean, pin?: string) =>
+  decidePurchase: (id: string, approve: boolean, pin?: string, passkey?: string) =>
     rpc<{
       changed: boolean;
       status?: PurchaseStatus;
@@ -514,7 +537,32 @@ export const api = {
       decided_by_name?: string | null;
       decided_at?: string | null;
       decided_by_me?: boolean;
-    }>('decide_purchase', approve ? { p_request_id: id, p_approve: true, p_pin: pin ?? null } : { p_request_id: id, p_approve: false }),
+    }>(
+      'decide_purchase',
+      !approve
+        ? { p_request_id: id, p_approve: false }
+        : passkey
+          ? { p_request_id: id, p_approve: true, p_passkey: passkey }
+          : { p_request_id: id, p_approve: true, p_pin: pin ?? null },
+    ),
+
+  /** Turning Face ID on: the PIN first, then the phone makes a key. */
+  passkeyBeginRegister: (pin: string) => rpc<PasskeyStart<CreateOptions>>('passkey_begin_register', { p_pin: pin }),
+
+  /** A challenge to sign a purchase with Face ID. */
+  passkeyBeginAuth: () => rpc<PasskeyStart<RequestOptions>>('passkey_begin_auth'),
+
+  /** The server checks the phone's Face ID answer (Edge Function «passkey»). */
+  passkeyCheck: async (challengeId: string, response: PasskeyAnswer) => {
+    const { data, error } = await supabase.functions.invoke('passkey', {
+      body: { challenge_id: challengeId, response },
+    });
+    if (error) throw toApiError(error);
+    const r = data as { ok: boolean; error?: string };
+    if (!r.ok) throw new ApiError(r.error ?? 'passkey_failed');
+  },
+
+  deletePasskeys: () => rpc<number>('delete_my_passkeys'),
 
   myPin: () => rpc<PinState>('my_pin'),
 

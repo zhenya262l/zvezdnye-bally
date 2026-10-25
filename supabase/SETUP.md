@@ -32,3 +32,8 @@
    - Проверка: `select jobname, schedule from cron.job where jobname = 'zb-photo-purge';` возвращает строку.
 10. **Магазин (этап 3, часть 1).** **SQL Editor:** выполнить `migrations/20261024000100_shop.sql`, затем выложить сайт. Проверка: `select count(*) from public.shop_items;` — по 14 товаров на семью.
 11. **ПИН и экранное время (этап 3, часть 3).** **SQL Editor:** выполнить `migrations/20261025000100_pin_screen.sql`, затем выложить сайт. pgcrypto должен стоять в схеме `extensions` (в Supabase так по умолчанию).
+12. **Face ID для подписи покупок (этап 3, часть 4).**
+   - **SQL Editor:** выполнить `migrations/20261026000100_passkeys.sql`. Сначала база, потом сайт.
+   - **Edge Functions → Deploy a new function → Via Editor.** Имя `passkey`, код из `functions/passkey/index.ts` → **Deploy function**. В настройках функции выключить проверку JWT. Секреты не нужны.
+   - Выложить сайт.
+   - Проверка: `select rp_id, origins from private.passkey_config;` возвращает `zhenya262l.github.io` и `{https://zhenya262l.github.io}`. В приложении «Настройки» → «ПИН для покупок» → «Включить Face ID».

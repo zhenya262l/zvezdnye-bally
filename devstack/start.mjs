@@ -22,7 +22,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const dataDir = process.env.DEVSTACK_DATA ?? path.join(process.env.HOME ?? '/tmp', '.zb-devstack');
 
-const PORTS = { db: 54322, api: 54321, auth: 54329, rest: 54323, smtp: 54325, mail: 54324, templates: 54326 };
+// fn: an Edge Function the tests start themselves with Deno (Deno.serve listens on 8000).
+const PORTS = { db: 54322, api: 54321, auth: 54329, rest: 54323, smtp: 54325, mail: 54324, templates: 54326, fn: 8000 };
 const JWT_SECRET = 'local-dev-jwt-secret-with-at-least-32-characters';
 
 function b64url(input) {
@@ -157,6 +158,10 @@ await waitFor(`http://127.0.0.1:${PORTS.auth}/health`, 'auth');
 
 // 4. Project migrations
 await applyMigrations();
+// Face ID on the test stack: the app is opened at http://localhost:8080.
+await db.query(
+  `update private.passkey_config set rp_id = 'localhost', origins = '{http://localhost:8080}' where id = 1`,
+);
 
 // 5. PostgREST
 run('rest', path.join(here, 'bin/postgrest'), [], {
@@ -186,6 +191,7 @@ http
     let rest;
     if (url.startsWith('/auth/v1')) [port, rest] = [PORTS.auth, url.slice('/auth/v1'.length) || '/'];
     else if (url.startsWith('/rest/v1')) [port, rest] = [PORTS.rest, url.slice('/rest/v1'.length) || '/'];
+    else if (url.startsWith('/functions/v1/')) [port, rest] = [PORTS.fn, url.slice('/functions/v1'.length)];
     else return res.writeHead(404, CORS).end();
     const headers = { ...req.headers, host: `127.0.0.1:${port}` };
     delete headers.origin;

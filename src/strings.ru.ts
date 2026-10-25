@@ -102,6 +102,11 @@ export const t = {
     screen_limit: 'На сегодня экранного времени уже не хватает.',
     invalid_screen_limit: 'Лимит — от 0 до 600 минут.',
     invalid_minutes: 'Минуты экрана — от 1 до 240.',
+    passkey_failed: 'Face ID не подтвердился.',
+    passkey_unknown: 'Этот Face ID не подключён. Включите его в настройках.',
+    no_passkey: 'Face ID ещё не включён.',
+    too_many_passkeys: 'Face ID уже включён на 5 устройствах.',
+    challenge_gone: 'Время вышло. Попробуйте ещё раз.',
   } as Record<string, string>,
 
   install: {
@@ -374,6 +379,20 @@ export const t = {
     screenField: 'Минут в день',
     screenSave: 'Сохранить',
     screenSaved: 'Сохранено. Новое значение — с завтрашнего дня.',
+    // Face ID
+    faceSign: 'Подписать с Face ID',
+    faceOr: 'или введите ПИН',
+    faceFailed: 'Face ID не сработал. Можно ввести ПИН.',
+    faceOn: 'Face ID включён: покупку можно подписать лицом.',
+    faceOff: 'Face ID не включён. Включите, чтобы подписывать покупки без ввода ПИНа.',
+    faceEnable: 'Включить Face ID',
+    faceDisable: 'Выключить Face ID',
+    faceTitle: 'Face ID для покупок',
+    faceLead: 'Введите ПИН, затем подтвердите Face ID. Лицо остаётся в телефоне: приложение получает только подпись.',
+    faceNext: 'Дальше',
+    faceConfirm: 'Подтвердите Face ID',
+    faceDone: 'Face ID включён.',
+    faceRemoved: 'Face ID выключен.',
   },
 
   tasks: {

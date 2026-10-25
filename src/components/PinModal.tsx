@@ -17,12 +17,14 @@ type Props = {
   error: string | null;
   onSubmit: (pin: string) => void;
   onCancel: () => void;
+  /** Face ID is on for this parent: a button above the PIN. */
+  faceId?: { ready: boolean; busy: boolean; onPress: () => void };
 };
 
 const digits = (s: string) => s.replace(/[^0-9]/g, '').slice(0, 4);
 
 /** The parent's 4-digit PIN before a purchase is signed. */
-export function PinModal({ mode, title, busy, error, onSubmit, onCancel }: Props) {
+export function PinModal({ mode, title, busy, error, onSubmit, onCancel, faceId }: Props) {
   const p = usePalette();
   const [pin, setPin] = useState('');
   const [repeat, setRepeat] = useState('');
@@ -48,7 +50,23 @@ export function PinModal({ mode, title, busy, error, onSubmit, onCancel }: Props
           onPress={() => {}}
           accessible={false}>
           <T v="h2">{title}</T>
-          <T muted>{mode === 'create' ? t.shop.pinCreate : t.shop.pinEnter}</T>
+          {faceId && mode === 'enter' ? (
+            <>
+              <Button
+                testID="face-sign"
+                title={`🙂 ${t.shop.faceSign}`}
+                variant="accent"
+                onPress={faceId.onPress}
+                loading={faceId.busy}
+                disabled={!faceId.ready || busy}
+              />
+              <T muted center>
+                {t.shop.faceOr}
+              </T>
+            </>
+          ) : (
+            <T muted>{mode === 'create' ? t.shop.pinCreate : t.shop.pinEnter}</T>
+          )}
           <Field
             testID="pin-input"
             label={t.shop.pinField}
@@ -59,7 +77,7 @@ export function PinModal({ mode, title, busy, error, onSubmit, onCancel }: Props
             inputMode="numeric"
             autoComplete="off"
             maxLength={4}
-            autoFocus
+            autoFocus={!faceId}
             onSubmitEditing={mode === 'enter' ? submit : undefined}
           />
           {mode === 'create' ? (

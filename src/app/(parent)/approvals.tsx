@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { PenIcon } from '@/components/art/Icons';
@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
 import { PinModal, pinErrorText } from '@/components/PinModal';
+import { parentVerifier } from '@/platform/biometric';
 import { PurchaseCard } from '@/components/PurchaseCard';
 import { PushPrompt } from '@/components/PushPrompt';
 import { QueueCard } from '@/components/QueueCard';
@@ -15,6 +16,7 @@ import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
 import { api, errorText, type PurchaseItem, type QueueItem } from '@/lib/api';
+import type { RequestOptions } from '@/platform/biometric';
 import { formatTime, todayISO } from '@/lib/dates';
 import { useParentQueue, usePurchaseQueue } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
@@ -37,6 +39,30 @@ export default function Approvals() {
   const [pinBusy, setPinBusy] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const pinState = useQuery({ queryKey: ['pin', uid], queryFn: api.myPin, enabled: !!uid });
+  const faceSupported = useQuery({
+    queryKey: ['faceSupported'],
+    queryFn: parentVerifier.isPasskeySupported,
+    staleTime: Infinity,
+  });
+  const hasFace = (pinState.data?.passkeys ?? 0) > 0 && faceSupported.data === true;
+  // A Face ID challenge loaded when the dialog opens: the tap then goes straight to Face ID.
+  const [faceOpts, setFaceOpts] = useState<{ id: string; options: RequestOptions } | null>(null);
+  const [faceBusy, setFaceBusy] = useState(false);
+  const faceLoading = useRef(false);
+  // While the dialog is open, keep a fresh Face ID challenge ready (it is used once).
+  useEffect(() => {
+    if (!pinFor || !hasFace || faceOpts || faceBusy || faceLoading.current) return;
+    faceLoading.current = true;
+    api
+      .passkeyBeginAuth()
+      .then((r) => {
+        if (r.ok && r.challenge_id && r.options) setFaceOpts({ id: r.challenge_id, options: r.options });
+      })
+      .catch(() => undefined) // The PIN still works.
+      .finally(() => {
+        faceLoading.current = false;
+      });
+  }, [pinFor, hasFace, faceOpts, faceBusy]);
   const hideInfo = useCallback(() => setInfo(null), []);
 
   if (queue.isPending) return <Loading />;
@@ -68,7 +94,39 @@ export default function Approvals() {
     setInfo(null);
     setPinError(null);
     setPinMode(pinState.data?.set === false ? 'create' : 'enter');
+    setFaceOpts(null);
     setPinFor(item);
+  }
+
+  async function signWithFace() {
+    if (!pinFor || !faceOpts) return;
+    const challenge = faceOpts;
+    // First thing in the tap: iPhone shows Face ID only right after a tap.
+    const answer = parentVerifier.confirm(challenge.options);
+    setFaceOpts(null);
+    setFaceBusy(true);
+    setPinError(null);
+    try {
+      await api.passkeyCheck(challenge.id, await answer);
+      const r = await api.decidePurchase(pinFor.id, true, undefined, challenge.id);
+      if (r.error) throw new Error(r.error);
+      setPinFor(null);
+      if (!r.changed && !r.decided_by_me) {
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name || t.common.formerParent;
+        setInfo({
+          text: r.status === 'rejected' ? t.shop.rejectedBy(name, time) : t.shop.signedBy(name, time),
+          kind: 'info',
+        });
+      }
+    } catch {
+      setPinError(t.shop.faceFailed);
+    } finally {
+      setFaceBusy(false);
+      void qc.invalidateQueries({ queryKey: ['purchases', uid] });
+      void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+      void qc.invalidateQueries({ queryKey: ['childDay', uid] });
+    }
   }
 
   async function signWithPin(pin: string) {
@@ -271,6 +329,7 @@ export default function Approvals() {
           error={pinError}
           onSubmit={(pin) => void signWithPin(pin)}
           onCancel={() => setPinFor(null)}
+          faceId={hasFace ? { ready: !!faceOpts, busy: faceBusy, onPress: () => void signWithFace() } : undefined}
         />
       ) : null}
       <Toast msg={info} onHide={hideInfo} inTabs />

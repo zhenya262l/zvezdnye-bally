@@ -311,6 +311,30 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------
+-- A parent who leaves (or whose family is deleted) takes the PIN and the
+-- Face ID keys along. The app owner's account stays after its family is
+-- deleted, so the keys must not wait for the account to go.
+-- ---------------------------------------------------------------------------
+create or replace function private.forget_parent_keys()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if old.role = 'parent' then
+    delete from private.passkeys k where k.user_id = old.user_id;
+    delete from private.webauthn_challenges c where c.user_id = old.user_id;
+    delete from private.parent_pins p where p.user_id = old.user_id;
+  end if;
+  return old;
+end
+$$;
+
+drop trigger if exists members_forget_parent_keys on public.members;
+create trigger members_forget_parent_keys
+  after delete on public.members
+  for each row execute function private.forget_parent_keys();
+
+-- ---------------------------------------------------------------------------
 -- Privileges
 -- ---------------------------------------------------------------------------
 revoke execute on function

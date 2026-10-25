@@ -114,3 +114,21 @@ test('«Выключить Face ID» removes the keys; the tables stay closed to
            has_function_privilege('anon', 'public.passkey_begin_auth()', 'execute') d`);
   assert.deepEqual(r.rows[0], { a: false, b: false, c: false, d: false });
 });
+
+test("deleting the family removes the PIN and Face ID keys, even of the app owner's account that stays", async () => {
+  const { p } = await setup('pk-family-gone');
+  await addKey(p.userId);
+  await p.c.rpc('passkey_begin_auth');
+  await db.query('insert into private.app_admins (user_id) values ($1)', [p.userId]);
+  const r = await p.c.rpc('delete_family');
+  assert.equal(r.error, null);
+  const left = await db.query(
+    `select (select count(*)::int from auth.users where id = $1) account,
+            (select count(*)::int from private.parent_pins where user_id = $1) pins,
+            (select count(*)::int from private.passkeys where user_id = $1) keys,
+            (select count(*)::int from private.webauthn_challenges where user_id = $1) challenges`,
+    [p.userId],
+  );
+  assert.deepEqual(left.rows[0], { account: 1, pins: 0, keys: 0, challenges: 0 });
+  await db.query('delete from private.app_admins where user_id = $1', [p.userId]);
+});

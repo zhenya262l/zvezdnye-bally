@@ -61,6 +61,35 @@ export function usePurchaseQueue() {
   return useQuery({ queryKey: ['purchases', uid], queryFn: api.purchaseQueue, enabled: !!uid, refetchInterval: live });
 }
 
+/** Without childId: the signed-in child's own level. */
+export function useChildLevel(childId?: string) {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({
+    queryKey: ['level', uid, childId ?? 'me'],
+    queryFn: () => api.childLevel(childId),
+    enabled: !!uid,
+    refetchInterval: live,
+  });
+}
+
+export function useChildGrades() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['grades', uid], queryFn: api.childGrades, enabled: !!uid, refetchInterval: live });
+}
+
+export function useGradeQueue() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['gradeQueue', uid], queryFn: api.gradeQueue, enabled: !!uid, refetchInterval: live });
+}
+
+export function useMotivationSettings() {
+  const uid = useSession((s) => s.session?.user.id);
+  return useQuery({ queryKey: ['motivation', uid], queryFn: api.motivationSettings, enabled: !!uid });
+}
+
 /** Without childId: the signed-in child's own piggy bank. */
 export function useChildGoals(childId?: string) {
   const uid = useSession((s) => s.session?.user.id);

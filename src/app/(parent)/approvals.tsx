@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { PenIcon } from '@/components/art/Icons';
 import { GoalProposalCard } from '@/components/GoalCards';
+import { GradeCard } from '@/components/Grades';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
@@ -16,10 +17,10 @@ import { QueueCard } from '@/components/QueueCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
-import { api, errorText, type PurchaseItem, type QueueItem } from '@/lib/api';
+import { api, errorText, type GradeItem, type PurchaseItem, type QueueItem } from '@/lib/api';
 import type { RequestOptions } from '@/platform/biometric';
 import { formatTime, todayISO } from '@/lib/dates';
-import { useGoalProposals, useParentQueue, usePurchaseQueue } from '@/lib/queries';
+import { useGoalProposals, useGradeQueue, useParentQueue, usePurchaseQueue } from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { space, usePalette } from '@/theme';
@@ -32,11 +33,13 @@ export default function Approvals() {
   const queue = useParentQueue();
   const purchases = usePurchaseQueue();
   const proposals = useGoalProposals();
+  const gradeQueue = useGradeQueue();
   const {
     id: highlightId,
     purchase: highlightPurchase,
     goal: highlightGoal,
-  } = useLocalSearchParams<{ id?: string; purchase?: string; goal?: string }>();
+    grade: highlightGrade,
+  } = useLocalSearchParams<{ id?: string; purchase?: string; goal?: string; grade?: string }>();
   const [busy, setBusy] = useState<string | null>(null);
   const [info, setInfo] = useState<ToastMsg>(null);
   // Signing a purchase: the PIN dialog for this request.
@@ -85,6 +88,11 @@ export default function Approvals() {
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
   const buyPending = (purchases.data ?? []).filter((x) => x.status === 'pending');
   const dreams = proposals.data ?? [];
+  const gradesPending = (gradeQueue.data ?? []).filter((x) => x.status === 'pending');
+  const gradesToday = gradesPending.filter((x) => x.is_today);
+  const gradesDecided = (gradeQueue.data ?? [])
+    .filter((x) => x.status !== 'pending')
+    .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
   const buyDecided = (purchases.data ?? [])
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
@@ -94,6 +102,7 @@ export default function Approvals() {
     void qc.invalidateQueries({ queryKey: ['childDay', uid] });
     void qc.invalidateQueries({ queryKey: ['ledger', uid] });
     void qc.invalidateQueries({ queryKey: ['purchases', uid] });
+    void qc.invalidateQueries({ queryKey: ['gradeQueue', uid] });
     await qc.invalidateQueries({ queryKey: ['queue', uid] }).catch(() => undefined);
   };
 
@@ -234,6 +243,29 @@ export default function Approvals() {
     }
   }
 
+  async function decideGrade(item: GradeItem, approve: boolean) {
+    setBusy(`grade-${item.id}`);
+    setInfo(null);
+    try {
+      const r = await api.decideGrade(item.id, approve);
+      if (!r.changed && !r.decided_by_me) {
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name || t.common.formerParent;
+        setInfo({
+          text: r.status === 'rejected' ? t.grades.rejectedBy(name, time) : t.grades.signedBy(name, time),
+          kind: 'info',
+        });
+      }
+    } catch (e) {
+      setInfo({ text: errorText(e), kind: 'error' });
+    } finally {
+      await qc.invalidateQueries({ queryKey: ['gradeQueue', uid] }).catch(() => undefined);
+      void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+      void qc.invalidateQueries({ queryKey: ['childDay', uid] });
+      setBusy(null);
+    }
+  }
+
   async function signAll() {
     setBusy('all');
     setInfo(null);
@@ -256,10 +288,10 @@ export default function Approvals() {
       <Screen inTabs>
         <T v="title">{t.approvals.title}</T>
         <PushPrompt role="parent" />
-        {pendingToday.length > 0 ? (
+        {pendingToday.length + gradesToday.length > 0 ? (
           <Button
             testID="sign-all"
-            title={t.approvals.signAll(pendingToday.length)}
+            title={t.approvals.signAll(pendingToday.length + gradesToday.length)}
             variant="accent"
             onPress={signAll}
             loading={busy === 'all'}
@@ -274,6 +306,24 @@ export default function Approvals() {
                 item={item}
                 highlighted={item.id === highlightGoal}
                 onDone={(text, kind) => setInfo({ text, kind })}
+              />
+            ))}
+            {buyPending.length === 0 && gradesPending.length === 0 && pending.length > 0 ? (
+              <T v="h2">{t.approvals.tasksHeading}</T>
+            ) : null}
+          </>
+        ) : null}
+        {gradesPending.length > 0 ? (
+          <>
+            <T v="h2">{t.grades.heading}</T>
+            {gradesPending.map((item) => (
+              <GradeCard
+                key={item.id}
+                item={item}
+                tz={tz}
+                highlighted={item.id === highlightGrade}
+                busy={busy === `grade-${item.id}`}
+                onDecide={(approve) => void decideGrade(item, approve)}
               />
             ))}
             {buyPending.length === 0 && pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
@@ -295,7 +345,8 @@ export default function Approvals() {
             {pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
           </>
         ) : null}
-        {pending.length === 0 && (buyPending.length > 0 || dreams.length > 0) ? null : pending.length === 0 ? (
+        {pending.length === 0 &&
+        (buyPending.length > 0 || dreams.length > 0 || gradesPending.length > 0) ? null : pending.length === 0 ? (
           <Card>
             <View style={styles.empty}>
               <PenIcon color={p.primary} size={44} />
@@ -320,11 +371,14 @@ export default function Approvals() {
             />
           ))
         )}
-        {decided.length > 0 || buyDecided.length > 0 ? (
+        {decided.length > 0 || buyDecided.length > 0 || gradesDecided.length > 0 ? (
           <>
             <T v="h2" style={styles.section}>
               {t.approvals.decidedToday}
             </T>
+            {gradesDecided.map((item) => (
+              <GradeCard key={item.id} item={item} tz={tz} highlighted={item.id === highlightGrade} />
+            ))}
             {buyDecided.map((item) => (
               <PurchaseCard key={item.id} item={item} tz={tz} highlighted={item.id === highlightPurchase} />
             ))}

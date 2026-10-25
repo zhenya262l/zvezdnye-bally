@@ -236,6 +236,10 @@ test('a purchase notifies the parents; the answer notifies the child', async () 
       [user, `https://web.push.apple.com/shop-${n}-${user}`],
     );
   }
+  // Quiet hours (21:00–07:00 by default) would drop the message: a one-minute window at 03:00.
+  await db.query(`update public.members set push_quiet_from = '03:00', push_quiet_to = '03:01' where user_id = any($1)`, [
+    [p.userId, a.userId],
+  ]);
   const buy = await a.c.rpc('buy', { p_item_id: (await item(p.c, 'Мороженое в магазине')).id });
   await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   const out = await db.query(

@@ -234,6 +234,48 @@ export type PurchaseItem = {
   available: number;
 };
 
+export type Level = { idx: number; name: string; min_points: number; bonus: number };
+
+/** A child's level: everything earned, the level reached and the next one. */
+export type ChildLevel = {
+  child_id: string;
+  earned: number;
+  level: { idx: number; name: string; min_points: number };
+  next: (Level & { left: number }) | null;
+  levels: (Level & { reached: boolean })[];
+};
+
+/** '1'…'10' or 'praise' (a teacher's or coach's praise). */
+export type Mark = string;
+
+export type ChildGrades = {
+  /** Points per mark now (the parent may change them before signing). */
+  scale: Record<Mark, number>;
+  /** Her recent subjects, newest first. */
+  subjects: string[];
+  grades: { id: string; mark: Mark; subject: string; status: PurchaseStatus; points: number; created_at: string }[];
+};
+
+/** A grade on the parent's «Подписи». */
+export type GradeItem = {
+  id: string;
+  child_id: string;
+  child_name: string;
+  child_color: string;
+  child_avatar: string;
+  mark: Mark;
+  subject: string;
+  is_today: boolean;
+  status: PurchaseStatus;
+  points: number;
+  created_at: string;
+  decided_at: string | null;
+  decided_by_name: string | null;
+  decided_by_me: boolean | null;
+};
+
+export type MotivationSettings = { levels: Level[]; grades: Record<Mark, number> };
+
 export type GoalStatus = 'proposed' | 'active' | 'rejected' | 'bought' | 'cancelled';
 
 /** The piggy bank of one child. */
@@ -569,6 +611,31 @@ export const api = {
   buy: (itemId: string) => rpc<{ id: string; status: PurchaseStatus; available: number }>('buy', { p_item_id: itemId }),
 
   purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
+
+  childLevel: (childId?: string) => rpc<ChildLevel>('child_level', childId ? { p_child_id: childId } : {}),
+
+  childGrades: () => rpc<ChildGrades>('child_grades'),
+
+  submitGrade: (mark: Mark, subject: string) => rpc<string>('submit_grade', { p_mark: mark, p_subject: subject }),
+
+  gradeQueue: () => rpc<GradeItem[]>('grade_queue'),
+
+  decideGrade: (id: string, approve: boolean) =>
+    rpc<{
+      changed: boolean;
+      status: PurchaseStatus;
+      points?: number;
+      decided_by_name?: string | null;
+      decided_at?: string | null;
+      decided_by_me?: boolean;
+    }>('decide_grade', { p_grade_id: id, p_approve: approve }),
+
+  motivationSettings: () => rpc<MotivationSettings>('motivation_settings'),
+
+  saveLevels: (levels: { idx: number; min_points: number; bonus: number }[]) =>
+    rpc<MotivationSettings>('save_levels', { p_levels: levels }),
+
+  saveGradeScale: (grades: Record<Mark, number>) => rpc<MotivationSettings>('save_grade_scale', { p_grades: grades }),
 
   childGoals: (childId?: string) => rpc<ChildGoals>('child_goals', childId ? { p_child_id: childId } : {}),
 

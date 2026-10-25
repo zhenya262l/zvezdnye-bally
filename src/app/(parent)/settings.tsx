@@ -53,6 +53,23 @@ export default function Settings() {
         </View>
         <ChevronIcon color={p.textMuted} />
       </Pressable>
+      <Pressable
+        testID="settings-motivation"
+        accessibilityRole="button"
+        onPress={() => router.push('/motivation')}
+        style={({ pressed }) => [
+          styles.bigRow,
+          { backgroundColor: p.card, borderColor: brand.turquoise, opacity: pressed ? 0.8 : 1 },
+        ]}>
+        <T style={styles.emoji}>🏆</T>
+        <View style={styles.flex}>
+          <T v="bodyBold">{t.levels.settings}</T>
+          <T v="small" muted>
+            {t.levels.settingsHint}
+          </T>
+        </View>
+        <ChevronIcon color={p.textMuted} />
+      </Pressable>
       <ScreenLimitCard />
       <PinCard />
       <NotificationsCard role="parent" />

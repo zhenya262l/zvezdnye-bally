@@ -9,6 +9,7 @@ import { BonusModal } from '@/components/BonusModal';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { KidDreams } from '@/components/GoalCards';
+import { KidLevel } from '@/components/Levels';
 import { LoadError, Loading } from '@/components/Loading';
 import { PairingCodeModal } from '@/components/PairingCodeModal';
 import { Screen } from '@/components/Screen';
@@ -53,6 +54,7 @@ export default function Kids() {
             <View style={styles.info}>
               <T v="big">{formatAge(c.birth_date)}</T>
               <Balance childId={c.id} />
+              <KidLevel childId={c.id} />
               <T muted>{t.kids.birthday(formatDayMonth(c.birth_date))}</T>
               {/* Unknown until the list loads: no «не подключён» on a slow network. */}
               {members.isSuccess ? (

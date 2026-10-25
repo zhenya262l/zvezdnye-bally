@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/art/Avatar';
 import { Card } from '@/components/Card';
 import { LedgerList } from '@/components/LedgerList';
+import { LevelCard } from '@/components/Levels';
 import { LoadError, Loading } from '@/components/Loading';
 import { NotificationsCard } from '@/components/NotificationsCard';
 import { Screen } from '@/components/Screen';
@@ -31,6 +32,7 @@ export default function Me() {
           {t.child.meAge(formatAge(me.birth_date))}
         </T>
       </View>
+      <LevelCard color={me.color} />
       <Card title={t.childTabs.me} accent={me.color}>
         <T>{t.child.meBirthday(formatDayMonth(me.birth_date))}</T>
       </Card>

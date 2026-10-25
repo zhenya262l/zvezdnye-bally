@@ -86,3 +86,21 @@ export async function pairedChild(parent, kidIndex = 0) {
   d.childId = parent.kids[kidIndex].id;
   return d;
 }
+
+/**
+ * Test shortcut for the browser tests that are not about the family agreement:
+ * this person has signed the newest version (otherwise the agreement comes first).
+ */
+export async function signAgreementFor(userId) {
+  await sql(
+    `insert into public.agreement_signatures (family_id, version_id, user_id, name, role)
+     select m.family_id, v.id, m.user_id, coalesce(c.name, m.display_name, 'Родитель'), m.role
+       from public.members m
+       join public.agreement_versions v on v.family_id = m.family_id
+       left join public.children c on c.id = m.child_id
+      where m.user_id = $1
+        and v.version = (select max(x.version) from public.agreement_versions x where x.family_id = m.family_id)
+     on conflict do nothing`,
+    [userId],
+  );
+}

@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 
-import { consentId, familyWithKids, newParent, pairedChild, sql } from '../db/helpers.mjs';
+import { consentId, familyWithKids, newParent, pairedChild, sql, signAgreementFor } from '../db/helpers.mjs';
 
 const S = JSON.parse(
   fs.readFileSync(process.env.DEVSTACK_STATE ?? path.join(os.homedir(), '.zb-devstack/state.json'), 'utf8'),
@@ -38,6 +38,7 @@ after(async () => {
  * `fontPx` simulates a larger iPhone text size (the app reads the root font).
  */
 async function phone(session, { width = 375, fontPx } = {}) {
+  if (session) await signAgreementFor(session.user.id);
   const ctx = await browser.newContext({
     viewport: { width, height: 812 },
     deviceScaleFactor: 2,

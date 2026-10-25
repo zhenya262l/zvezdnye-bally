@@ -93,6 +93,11 @@ async function signInApproved(page, email) {
   await page.reload();
 }
 
+/** The family agreement comes first for everyone: sign it (each person signs once). */
+async function agree(page) {
+  await page.getByTestId('agreement-sign').click({ timeout: 15000 });
+}
+
 async function leftOf(page) {
   return Number(await page.getByTestId('formula-left').innerText());
 }
@@ -127,6 +132,7 @@ test('no-check tasks, praise, signatures within 5 seconds, bonus, editor, second
   await P.getByTestId('child1-name').fill('Маша');
   await P.getByTestId('child1-birth').fill('2017-03-14');
   await P.getByTestId('setup-create').click();
+  await agree(P);
   await P.getByText('Пока ничего не ждёт подписи.').waitFor({ timeout: 15000 });
   await shot(P, '01-approvals-empty');
 
@@ -141,6 +147,7 @@ test('no-check tasks, praise, signatures within 5 seconds, bonus, editor, second
   await C.goto(APP);
   await C.getByTestId('role-child').click();
   await C.getByTestId('pair-code').fill(pairCode);
+  await agree(C);
   await C.getByText('Привет, Аня!').waitFor({ timeout: 15000 });
   await P.getByText('Готово').click();
   // Connected: the Kids tab says so and no longer offers the big connect button.
@@ -285,6 +292,7 @@ test('no-check tasks, praise, signatures within 5 seconds, bonus, editor, second
   await D.getByTestId('consent-check').filter({ visible: true }).click();
   await shot(D, '16-join');
   await D.getByTestId('join-submit').click();
+  await agree(D);
   await D.getByText('Ждут подписи').first().waitFor({ timeout: 15000 });
   await D.getByText(/Подпись: Мама, \d\d:\d\d/).first().waitFor({ timeout: 10000 });
   await shot(D, '17-dad-sees-signatures');
@@ -342,6 +350,7 @@ test('a new family: request with consent, owner approves, then the family is cre
     await O.getByTestId('child1-name').fill('Оля');
     await O.getByTestId('child1-birth').fill('2018-01-09');
     await O.getByTestId('setup-create').click();
+    await agree(O);
     await O.getByText('Ждут подписи').first().waitFor({ timeout: 15000 });
 
     // A new parent sees the request form; sending needs the consent tick.

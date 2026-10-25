@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
-import { S, familyWithKids, pairedChild, sql } from '../db/helpers.mjs';
+import { S, familyWithKids, pairedChild, sql, signAgreementFor } from '../db/helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const APP = process.env.FACE_APP_URL ?? 'http://localhost:8080/zvezdnye-bally/';
@@ -63,6 +63,7 @@ const seen = (page, text) => page.getByText(text).filter({ visible: true }).firs
 
 /** A parent's phone with a Face ID-like authenticator (it always recognises the face). */
 async function phoneWithFaceId(session) {
+  if (session) await signAgreementFor(session.user.id);
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,

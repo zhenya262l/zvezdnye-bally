@@ -85,6 +85,31 @@ export function useStreakQueue() {
   return useQuery({ queryKey: ['streakQueue', uid], queryFn: api.streakQueue, enabled: !!uid, refetchInterval: live });
 }
 
+export function useChildGifts() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['gifts', uid], queryFn: api.childGifts, enabled: !!uid, refetchInterval: live });
+}
+
+export function useGiftQueue() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['giftQueue', uid], queryFn: api.giftQueue, enabled: !!uid, refetchInterval: live });
+}
+
+/** The family agreement; the signatures of the others show up within a few seconds. */
+export function useAgreement() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(MEMBERS_REFRESH_MS);
+  return useQuery({ queryKey: ['agreement', uid], queryFn: api.familyAgreement, enabled: !!uid, refetchInterval: live });
+}
+
+/** Child: is it her birthday (the first call on the day also credits the parent's bonus). */
+export function useBirthday() {
+  const uid = useSession((s) => s.session?.user.id);
+  return useQuery({ queryKey: ['birthday', uid], queryFn: api.childBirthday, enabled: !!uid });
+}
+
 export function useChildGrades() {
   const uid = useSession((s) => s.session?.user.id);
   const live = useLive(LIVE_REFRESH_MS);

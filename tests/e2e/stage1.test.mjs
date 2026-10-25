@@ -121,6 +121,11 @@ test('parent and child sign in on two phones', async () => {
   await shot(P, '05-setup-filled');
   await P.getByTestId('setup-create').click();
 
+  // The family agreement comes first: the parent reads it and signs.
+  await P.getByTestId('agreement-must').waitFor({ timeout: 15000 });
+  await shot(P, '04b-agreement');
+  await P.getByTestId('agreement-sign').click();
+
   // Parent lands on "Ждут подписи"; go to the Kids tab
   await P.getByText('Ждут подписи').first().waitFor({ timeout: 15000 });
   await P.getByText('Дети', { exact: true }).last().click();
@@ -148,6 +153,8 @@ test('parent and child sign in on two phones', async () => {
   await C.getByText('Код не подошёл', { exact: false }).waitFor({ timeout: 15000 });
   await shot(C, '09-child-wrong-code');
   await C.getByTestId('pair-code').fill(pairCode);
+  // The daughter signs the agreement on her own phone.
+  await C.getByTestId('agreement-sign').click({ timeout: 15000 });
   await C.getByText('Привет, Аня!').waitFor({ timeout: 15000 });
   await shot(C, '10-child-today');
 

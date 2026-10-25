@@ -3,7 +3,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
 import { ChevronIcon } from '@/components/art/Icons';
+import { BirthdayBonusCard } from '@/components/Birthday';
 import { Card } from '@/components/Card';
+import { GiftLimitCard } from '@/components/Gifts';
 import { NotificationsCard } from '@/components/NotificationsCard';
 import { PinCard, ScreenLimitCard } from '@/components/ShopRulesCards';
 import { Screen } from '@/components/Screen';
@@ -70,7 +72,26 @@ export default function Settings() {
         </View>
         <ChevronIcon color={p.textMuted} />
       </Pressable>
+      <Pressable
+        testID="settings-agreement"
+        accessibilityRole="button"
+        onPress={() => router.push('/agreement')}
+        style={({ pressed }) => [
+          styles.bigRow,
+          { backgroundColor: p.card, borderColor: brand.leaf, opacity: pressed ? 0.8 : 1 },
+        ]}>
+        <T style={styles.emoji}>📜</T>
+        <View style={styles.flex}>
+          <T v="bodyBold">{t.agreement.settings}</T>
+          <T v="small" muted>
+            {t.agreement.settingsHint}
+          </T>
+        </View>
+        <ChevronIcon color={p.textMuted} />
+      </Pressable>
       <ScreenLimitCard />
+      <GiftLimitCard />
+      <BirthdayBonusCard />
       <PinCard />
       <NotificationsCard role="parent" />
       <Card title={t.settings.profiles} accent={brand.violet}>

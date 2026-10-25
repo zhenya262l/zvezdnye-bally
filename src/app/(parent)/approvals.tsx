@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { PenIcon } from '@/components/art/Icons';
 import { GoalProposalCard } from '@/components/GoalCards';
 import { GradeCard } from '@/components/Grades';
+import { GiftApprovalCard } from '@/components/Gifts';
 import { StreakCard } from '@/components/Streaks';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -18,10 +19,17 @@ import { QueueCard } from '@/components/QueueCard';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { Toast, type ToastMsg } from '@/components/Toast';
-import { api, errorText, type GradeItem, type PurchaseItem, type QueueItem, type StreakItem } from '@/lib/api';
+import { api, errorText, type GiftItem, type GradeItem, type PurchaseItem, type QueueItem, type StreakItem } from '@/lib/api';
 import type { RequestOptions } from '@/platform/biometric';
 import { formatTime, todayISO } from '@/lib/dates';
-import { useGoalProposals, useGradeQueue, useParentQueue, usePurchaseQueue, useStreakQueue } from '@/lib/queries';
+import {
+  useGiftQueue,
+  useGoalProposals,
+  useGradeQueue,
+  useParentQueue,
+  usePurchaseQueue,
+  useStreakQueue,
+} from '@/lib/queries';
 import { useSession, useWho } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { space, usePalette } from '@/theme';
@@ -36,13 +44,22 @@ export default function Approvals() {
   const proposals = useGoalProposals();
   const gradeQueue = useGradeQueue();
   const streakQueue = useStreakQueue();
+  const giftQueue = useGiftQueue();
   const {
     id: highlightId,
     purchase: highlightPurchase,
     goal: highlightGoal,
     grade: highlightGrade,
     streak: highlightStreak,
-  } = useLocalSearchParams<{ id?: string; purchase?: string; goal?: string; grade?: string; streak?: string }>();
+    gift: highlightGift,
+  } = useLocalSearchParams<{
+    id?: string;
+    purchase?: string;
+    goal?: string;
+    grade?: string;
+    streak?: string;
+    gift?: string;
+  }>();
   const [busy, setBusy] = useState<string | null>(null);
   const [info, setInfo] = useState<ToastMsg>(null);
   // Signing a purchase: the PIN dialog for this request.
@@ -95,8 +112,19 @@ export default function Approvals() {
   const streaksDecided = (streakQueue.data ?? [])
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
+  const giftsPending = (giftQueue.data ?? []).filter((x) => x.status === 'pending');
+  const giftsDecided = (giftQueue.data ?? [])
+    .filter((x) => x.status !== 'pending')
+    .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
   const gradesPending = (gradeQueue.data ?? []).filter((x) => x.status === 'pending');
   const gradesToday = gradesPending.filter((x) => x.is_today);
+  // Anything besides tasks waits: the tasks then get their own heading.
+  const othersPending =
+    buyPending.length > 0 ||
+    dreams.length > 0 ||
+    gradesPending.length > 0 ||
+    streaksPending.length > 0 ||
+    giftsPending.length > 0;
   const gradesDecided = (gradeQueue.data ?? [])
     .filter((x) => x.status !== 'pending')
     .sort((a, b) => Date.parse(b.decided_at ?? '') - Date.parse(a.decided_at ?? ''));
@@ -273,6 +301,29 @@ export default function Approvals() {
     }
   }
 
+  async function decideGift(item: GiftItem, approve: boolean) {
+    setBusy(`gift-${item.id}`);
+    setInfo(null);
+    try {
+      const r = await api.decideGift(item.id, approve);
+      if (!r.changed && !r.decided_by_me) {
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name || t.common.formerParent;
+        setInfo({
+          text: r.status === 'approved' ? t.gifts.signedBy(name, time) : t.gifts.rejectedBy(name, time),
+          kind: 'info',
+        });
+      }
+    } catch (e) {
+      setInfo({ text: errorText(e), kind: 'error' });
+    } finally {
+      await qc.invalidateQueries({ queryKey: ['giftQueue', uid] }).catch(() => undefined);
+      void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+      void qc.invalidateQueries({ queryKey: ['childDay', uid] });
+      setBusy(null);
+    }
+  }
+
   async function decideGrade(item: GradeItem, approve: boolean) {
     setBusy(`grade-${item.id}`);
     setInfo(null);
@@ -327,6 +378,21 @@ export default function Approvals() {
             loading={busy === 'all'}
           />
         ) : null}
+        {giftsPending.length > 0 ? (
+          <>
+            <T v="h2">{t.gifts.heading}</T>
+            {giftsPending.map((item) => (
+              <GiftApprovalCard
+                key={item.id}
+                item={item}
+                tz={tz}
+                highlighted={item.id === highlightGift}
+                busy={busy === `gift-${item.id}`}
+                onDecide={(approve) => void decideGift(item, approve)}
+              />
+            ))}
+          </>
+        ) : null}
         {dreams.length > 0 ? (
           <>
             <T v="h2">{t.dreams.proposals}</T>
@@ -338,12 +404,6 @@ export default function Approvals() {
                 onDone={(text, kind) => setInfo({ text, kind })}
               />
             ))}
-            {buyPending.length === 0 &&
-            gradesPending.length === 0 &&
-            streaksPending.length === 0 &&
-            pending.length > 0 ? (
-              <T v="h2">{t.approvals.tasksHeading}</T>
-            ) : null}
           </>
         ) : null}
         {streaksPending.length > 0 ? (
@@ -359,9 +419,6 @@ export default function Approvals() {
                 onDecide={(approve) => void decideStreak(item, approve)}
               />
             ))}
-            {gradesPending.length === 0 && buyPending.length === 0 && pending.length > 0 ? (
-              <T v="h2">{t.approvals.tasksHeading}</T>
-            ) : null}
           </>
         ) : null}
         {gradesPending.length > 0 ? (
@@ -377,7 +434,6 @@ export default function Approvals() {
                 onDecide={(approve) => void decideGrade(item, approve)}
               />
             ))}
-            {buyPending.length === 0 && pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
           </>
         ) : null}
         {buyPending.length > 0 ? (
@@ -393,11 +449,10 @@ export default function Approvals() {
                 onDecide={(approve) => decidePurchase(item, approve)}
               />
             ))}
-            {pending.length > 0 ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
           </>
         ) : null}
-        {pending.length === 0 &&
-        (buyPending.length > 0 || dreams.length > 0 || gradesPending.length > 0) ? null : pending.length === 0 ? (
+        {pending.length > 0 && othersPending ? <T v="h2">{t.approvals.tasksHeading}</T> : null}
+        {pending.length === 0 && othersPending ? null : pending.length === 0 ? (
           <Card>
             <View style={styles.empty}>
               <PenIcon color={p.primary} size={44} />
@@ -422,11 +477,18 @@ export default function Approvals() {
             />
           ))
         )}
-        {decided.length > 0 || buyDecided.length > 0 || gradesDecided.length > 0 || streaksDecided.length > 0 ? (
+        {decided.length > 0 ||
+        buyDecided.length > 0 ||
+        gradesDecided.length > 0 ||
+        streaksDecided.length > 0 ||
+        giftsDecided.length > 0 ? (
           <>
             <T v="h2" style={styles.section}>
               {t.approvals.decidedToday}
             </T>
+            {giftsDecided.map((item) => (
+              <GiftApprovalCard key={item.id} item={item} tz={tz} highlighted={item.id === highlightGift} />
+            ))}
             {streaksDecided.map((item) => (
               <StreakCard key={item.id} item={item} tz={tz} highlighted={item.id === highlightStreak} />
             ))}

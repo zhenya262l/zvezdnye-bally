@@ -21,6 +21,8 @@ export type Who = {
   member: Member | null;
   /** A parent has to accept a newer edition of the consent text first. */
   needs_consent?: boolean;
+  /** The family agreement (the newest version) waits for this person's signature. */
+  needs_agreement?: boolean;
 };
 
 export type Child = {
@@ -269,6 +271,58 @@ export type StreakItem = {
   decided_by_name: string | null;
   decided_by_me: boolean | null;
 };
+
+/** A gift to a sister: she sends, the sister accepts, a parent signs. */
+export type GiftStatus = 'offered' | 'accepted' | 'approved' | 'declined' | 'rejected' | 'cancelled';
+
+export type ChildGifts = {
+  /** The daily limit, what she gave today, what is left, and what she may spend now. */
+  limit: number;
+  used: number;
+  left: number;
+  spendable: number;
+  sisters: { id: string; name: string; color: string; avatar: string }[];
+  incoming: { id: string; from_name: string; points: number; status: GiftStatus; created_at: string; decided_at: string | null }[];
+  outgoing: { id: string; to_name: string; points: number; status: GiftStatus; created_at: string; decided_at: string | null }[];
+};
+
+/** A gift the sister accepted, on the parent's «Подписи». */
+export type GiftItem = {
+  id: string;
+  from_id: string;
+  from_name: string;
+  from_color: string;
+  from_avatar: string;
+  to_id: string;
+  to_name: string;
+  points: number;
+  status: PurchaseStatus;
+  created_at: string | null;
+  decided_at: string | null;
+  decided_by_name: string | null;
+  decided_by_me: boolean | null;
+};
+
+/** The daily limit of gifts; a change works from `from`. */
+export type GiftSettings = { today: number; next: number | null; from: string | null };
+
+/** The family agreement: the newest rules, signatures, who waits, the changes. */
+export type Agreement = {
+  version: number;
+  rules: string[];
+  note: string | null;
+  created_at: string;
+  can_edit: boolean;
+  i_signed: boolean;
+  /** When this person signed the newest version. */
+  my_signed_at: string | null;
+  signatures: { name: string; role: 'parent' | 'child'; signed_at: string }[];
+  waiting: string[];
+  changes: { version: number; note: string | null; created_at: string; by_name: string | null }[];
+};
+
+/** «С днём рождения!» on the day; `bonus` is what a parent's bonus gave this year. */
+export type Birthday = { today: false } | { today: true; name: string; age: number; bonus: number | null };
 
 export type Level = { idx: number; name: string; min_points: number; bonus: number };
 
@@ -663,6 +717,43 @@ export const api = {
       decided_at?: string | null;
       decided_by_me?: boolean;
     }>('decide_streak', { p_streak_id: id, p_approve: approve }),
+
+  childGifts: () => rpc<ChildGifts>('child_gifts'),
+
+  offerGift: (toChild: string, points: number) =>
+    rpc<{ id: string; status: GiftStatus; available: number }>('offer_gift', { p_to_child: toChild, p_points: points }),
+
+  answerGift: (id: string, accept: boolean) =>
+    rpc<{ changed: boolean; status: GiftStatus }>('answer_gift', { p_gift_id: id, p_accept: accept }),
+
+  cancelGift: (id: string) => rpc<{ changed: boolean; status: GiftStatus }>('cancel_gift', { p_gift_id: id }),
+
+  giftQueue: () => rpc<GiftItem[]>('gift_queue'),
+
+  decideGift: (id: string, approve: boolean) =>
+    rpc<{
+      changed: boolean;
+      status: GiftStatus;
+      decided_by_name?: string | null;
+      decided_at?: string | null;
+      decided_by_me?: boolean;
+    }>('decide_gift', { p_gift_id: id, p_approve: approve }),
+
+  giftSettings: () => rpc<GiftSettings>('gift_settings'),
+
+  saveGiftLimit: (points: number) => rpc<GiftSettings>('save_gift_limit', { p_points: points }),
+
+  familyAgreement: () => rpc<Agreement>('family_agreement'),
+
+  signAgreement: (version: number) => rpc<{ version: number; signed_at: string }>('sign_agreement', { p_version: version }),
+
+  saveAgreement: (rules: string[], note: string) => rpc<Agreement>('save_agreement', { p_rules: rules, p_note: note }),
+
+  childBirthday: () => rpc<Birthday>('child_birthday'),
+
+  birthdaySettings: () => rpc<{ bonus: number | null }>('birthday_settings'),
+
+  saveBirthdayBonus: (points: number | null) => rpc<{ bonus: number | null }>('save_birthday_bonus', { p_points: points }),
 
   childLevel: (childId?: string) => rpc<ChildLevel>('child_level', childId ? { p_child_id: childId } : {}),
 

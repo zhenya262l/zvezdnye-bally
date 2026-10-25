@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Island } from '@/components/art/Island';
 import { PhotoSheet } from '@/components/PhotoSheet';
 import { Card } from '@/components/Card';
+import { BirthdayCard } from '@/components/Birthday';
 import { Formula } from '@/components/Formula';
 import { GradesCard } from '@/components/Grades';
 import { StreaksCard } from '@/components/Streaks';
@@ -180,6 +181,7 @@ export default function Today() {
         <T v="title">{me ? t.childPair.hello(me.name) : t.childTabs.today}</T>
         <T muted>{formatDayMonth(day.data.date)}</T>
         <PushPrompt role="child" />
+        <BirthdayCard />
         <Formula was={f.was} earned={f.earned} spent={f.spent} corrected={f.corrected} left={f.left} leftRef={target} />
         {(goals.data?.held ?? 0) > 0 ? (
           <T v="small" muted center testID="today-piggy">

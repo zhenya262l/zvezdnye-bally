@@ -36,5 +36,7 @@ export default function Gate() {
   if (!m) return <Redirect href={who.data.is_anonymous ? '/child-pair' : '/family-setup'} />;
   // A new edition of the consent text comes first (owner's decision 20.10.2026).
   if (m.role === 'parent' && who.data.needs_consent) return <Redirect href="/consent-update" />;
+  // The family agreement (owner's decision 25.10.2026): everyone signs the newest version.
+  if (who.data.needs_agreement) return <Redirect href="/agreement" />;
   return <Redirect href={m.role === 'parent' ? '/approvals' : '/today'} />;
 }

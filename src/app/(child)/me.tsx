@@ -1,7 +1,10 @@
+import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/art/Avatar';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { GiftCard } from '@/components/Gifts';
 import { LedgerList } from '@/components/LedgerList';
 import { LevelCard } from '@/components/Levels';
 import { LoadError, Loading } from '@/components/Loading';
@@ -33,8 +36,17 @@ export default function Me() {
         </T>
       </View>
       <LevelCard color={me.color} />
+      <GiftCard />
       <Card title={t.childTabs.me} accent={me.color}>
         <T>{t.child.meBirthday(formatDayMonth(me.birth_date))}</T>
+      </Card>
+      <Card title={t.agreement.settings} accent={brand.leaf}>
+        <Button
+          testID="me-agreement"
+          title={t.agreement.meRow}
+          variant="secondary"
+          onPress={() => router.push('/agreement')}
+        />
       </Card>
       <NotificationsCard role="child" />
       <Card title={t.child.history} accent={brand.sun}>

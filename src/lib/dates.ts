@@ -44,6 +44,11 @@ export function pluralRu(n: number, forms: readonly [string, string, string]): s
   return forms[2];
 }
 
+/** "21 балл", "3 балла", "5 баллов" */
+export function formatPoints(n: number): string {
+  return `${n} ${pluralRu(n, t.common.pointsForms)}`;
+}
+
 export function formatAge(birthISO: string, today?: string): string {
   const a = ageYears(birthISO, today);
   if (a === null || a < 0) return '';

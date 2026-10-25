@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 
-import { familyWithKids, pairedChild, sql } from '../db/helpers.mjs';
+import { familyWithKids, pairedChild, sql, signAgreementFor } from '../db/helpers.mjs';
 
 const APP = process.env.APP_URL ?? 'http://127.0.0.1:8080/zvezdnye-bally/';
 const SHOTS = process.env.SHOTS_DIR ?? '/tmp/zb-e2e-push';
@@ -39,6 +39,7 @@ const seen = (page, text) => page.getByText(text).filter({ visible: true }).firs
  * pushManager with a stand-in, 'denied' pretends the person said «Запретить».
  */
 async function phone(session, mode = 'fake') {
+  if (session) await signAgreementFor(session.user.id);
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,

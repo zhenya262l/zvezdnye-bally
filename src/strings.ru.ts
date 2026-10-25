@@ -596,6 +596,7 @@ export const t = {
 
   dreams: {
     inPiggy: (n: number) => `В копилке: ⭐ ${n}`,
+    ofThemPiggy: (n: number) => `Из них в копилке мечты: ${n}`,
     canPut: (n: number) => `Можно отложить: ${n}`,
     backTomorrow: (n: number) => `Забрала сегодня ${n}. Потратить их можно завтра.`,
     progress: (held: number, price: number) => `⭐ ${held} из ${price}`,
@@ -623,7 +624,7 @@ export const t = {
     takeTitle: 'Забрать из мечты',
     amount: 'Сколько баллов',
     putMax: (n: number) => `Можно до ${n}`,
-    takeNote: 'Забранные баллы можно потратить только завтра.',
+    takeNote: 'Баллы, которые лежали в копилке со вчера или раньше, можно потратить только завтра.',
     all: 'Всё',
     putDone: (n: number) => `Отложено ${n}`,
     takeDone: (n: number) => `Забрано ${n}`,

@@ -8,6 +8,7 @@ import { Banner } from './Banner';
 import { Button } from './Button';
 import { Chip } from './Chip';
 import { Field } from './Field';
+import { Stepper } from './Stepper';
 import { T } from './T';
 
 export type Goal = ChildGoals['goals'][number];
@@ -77,34 +78,21 @@ export function AmountSheet({
   onSubmit: (n: number) => void;
   onCancel: () => void;
 }) {
-  const [value, setValue] = useState('');
-  const n = Number(value);
-  const ok = value !== '' && Number.isInteger(n) && n >= 1 && n <= max;
-  const quick = [5, 10, 20].filter((x) => x < max);
+  // Any number from 1 to max: − / + by one, quick amounts, «Всё».
+  const [n, setN] = useState(Math.min(1, max));
+  const ok = Number.isInteger(n) && n >= 1 && n <= max;
+  const quick = [5, 10, 20, 50, 100].filter((x) => x < max);
   return (
     <Sheet onClose={onCancel} busy={busy} testID="amount-sheet">
       <T v="h2">{mode === 'put' ? t.dreams.putTitle : t.dreams.takeTitle}</T>
       <T v="bodyBold">{`${goal.icon} ${goal.title}`}</T>
-      <Field
-        testID="amount-field"
-        label={t.dreams.amount}
-        value={value}
-        onChangeText={(x) => setValue(x.replace(/[^0-9]/g, '').slice(0, 5))}
-        keyboardType="number-pad"
-        inputMode="numeric"
-        maxLength={5}
-      />
+      <Stepper testID="amount" label={t.dreams.amount} value={n} onChange={setN} min={1} max={Math.max(1, max)} />
       <View style={styles.chips}>
         {quick.map((x) => (
-          <Chip key={x} label={String(x)} selected={n === x} onPress={() => setValue(String(x))} />
+          <Chip key={x} testID={`amount-${x}`} label={String(x)} selected={n === x} onPress={() => setN(x)} />
         ))}
         {max > 0 ? (
-          <Chip
-            testID="amount-all"
-            label={`${t.dreams.all}: ${max}`}
-            selected={n === max}
-            onPress={() => setValue(String(max))}
-          />
+          <Chip testID="amount-all" label={`${t.dreams.all}: ${max}`} selected={n === max} onPress={() => setN(max)} />
         ) : null}
       </View>
       <T v="small" muted>

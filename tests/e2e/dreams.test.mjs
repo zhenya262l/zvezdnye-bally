@@ -80,13 +80,24 @@ test('a dream: proposed, priced, saved up, bought with the PIN', async () => {
   await P.getByTestId(`goal-approve-${goal}`).click();
   await seen(P, 'Мечта в копилке.').waitFor({ timeout: 10000 });
 
-  // She puts everything she can into it: 60 of her 100.
+  // Any number, not only 5, 10, 20: 7 with «+», then the rest with «Всё».
+  await C.getByTestId(`dream-put-${goal}`).click({ timeout: 15000 });
+  for (let i = 0; i < 6; i++) await C.getByTestId('amount-plus').click();
+  assert.equal(await C.getByTestId('amount-value').innerText(), '7');
+  await shot(C, '02a-child-amount');
+  await C.getByTestId('amount-ok').click();
+  await seen(C, 'В копилке: ⭐ 7').waitFor({ timeout: 10000 });
   await C.getByTestId(`dream-put-${goal}`).click({ timeout: 15000 });
   await C.getByTestId('amount-all').click();
+  assert.equal(await C.getByTestId('amount-value').innerText(), '53');
   await C.getByTestId('amount-ok').click();
   await seen(C, 'В копилке: ⭐ 60').waitFor({ timeout: 10000 });
   await seen(C, 'Мечта собрана!').waitFor({ timeout: 10000 });
   await shot(C, '02-child-full');
+
+  // «Сегодня» says how much of the balance is in the piggy bank.
+  await C.goto(`${APP}today`);
+  await seen(C, 'Из них в копилке мечты: 60').waitFor({ timeout: 15000 });
 
   // The shop does not see the points in the piggy bank (SPEC section 7).
   await C.goto(`${APP}shop`);

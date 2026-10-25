@@ -18,7 +18,7 @@ import { TaskSection, type SectionGroup } from '@/components/TaskSection';
 import { api, errorText, type ChildDay, type DayTask } from '@/lib/api';
 import { formatDayMonth } from '@/lib/dates';
 import { readPref, writePref } from '@/lib/localPrefs';
-import { useChildDay, useChildren } from '@/lib/queries';
+import { useChildDay, useChildGoals, useChildren } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { t } from '@/strings.ru';
 import { brand, radius, space, TOUCH_MIN } from '@/theme';
@@ -44,6 +44,7 @@ export default function Today() {
   const uid = useSession((s) => s.session?.user.id);
   const kids = useChildren();
   const day = useChildDay();
+  const goals = useChildGoals();
   const focused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -178,6 +179,11 @@ export default function Today() {
         <T muted>{formatDayMonth(day.data.date)}</T>
         <PushPrompt role="child" />
         <Formula was={f.was} earned={f.earned} spent={f.spent} corrected={f.corrected} left={f.left} leftRef={target} />
+        {(goals.data?.held ?? 0) > 0 ? (
+          <T v="small" muted center testID="today-piggy">
+            {t.dreams.ofThemPiggy(goals.data?.held ?? 0)}
+          </T>
+        ) : null}
         {sections.length === 0 ? (
           <Card title={t.childTabs.today} accent={brand.sun}>
             <View style={[styles.scene, { backgroundColor: brand.ocean }]}>

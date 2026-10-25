@@ -89,7 +89,8 @@ test('price change → «Купить» → the parent signs → points go', asy
   await C.getByText('Купить', { exact: true }).last().click();
   await seen(C, 'Покупка ждёт подписи.').waitFor({ timeout: 10000 });
   await C.getByText('⏳ Ждёт подписи').first().waitFor({ timeout: 10000 });
-  assert.match(await C.getByTestId('shop-available').innerText(), /8/);
+  // The list refreshes after the request: wait for it rather than read at once.
+  await C.getByTestId('shop-available').filter({ hasText: /: ⭐ 8$/ }).waitFor({ timeout: 10000 });
   await shot(C, '04-waiting');
 
   // The parent signs on «Подписи».

@@ -5,6 +5,7 @@ import { Avatar } from '@/components/art/Avatar';
 import { ChevronIcon } from '@/components/art/Icons';
 import { Card } from '@/components/Card';
 import { NotificationsCard } from '@/components/NotificationsCard';
+import { PinCard, ScreenLimitCard } from '@/components/ShopRulesCards';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/T';
 import { formatAge } from '@/lib/dates';
@@ -22,7 +23,10 @@ export default function Settings() {
         testID="settings-tasks"
         accessibilityRole="button"
         onPress={() => router.push('/tasks')}
-        style={({ pressed }) => [styles.bigRow, { backgroundColor: p.card, borderColor: brand.sun, opacity: pressed ? 0.8 : 1 }]}>
+        style={({ pressed }) => [
+          styles.bigRow,
+          { backgroundColor: p.card, borderColor: brand.sun, opacity: pressed ? 0.8 : 1 },
+        ]}>
         <T style={styles.emoji}>⭐</T>
         <View style={styles.flex}>
           <T v="bodyBold">{t.settings.tasks}</T>
@@ -36,7 +40,10 @@ export default function Settings() {
         testID="settings-shop"
         accessibilityRole="button"
         onPress={() => router.push('/shop-items')}
-        style={({ pressed }) => [styles.bigRow, { backgroundColor: p.card, borderColor: brand.coral, opacity: pressed ? 0.8 : 1 }]}>
+        style={({ pressed }) => [
+          styles.bigRow,
+          { backgroundColor: p.card, borderColor: brand.coral, opacity: pressed ? 0.8 : 1 },
+        ]}>
         <T style={styles.emoji}>🛍️</T>
         <View style={styles.flex}>
           <T v="bodyBold">{t.settings.shop}</T>
@@ -46,6 +53,8 @@ export default function Settings() {
         </View>
         <ChevronIcon color={p.textMuted} />
       </Pressable>
+      <ScreenLimitCard />
+      <PinCard />
       <NotificationsCard role="parent" />
       <Card title={t.settings.profiles} accent={brand.violet}>
         <T v="small" muted>

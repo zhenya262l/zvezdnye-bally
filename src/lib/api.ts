@@ -161,7 +161,14 @@ export type ShopItemInput = {
   kind: 'small' | 'big';
   days: number[];
   enabled: boolean;
+  /** Minutes of screen time the good gives (cartoons, tablet); 0 = none. */
+  screenMinutes: number;
 };
+
+/** Screen time per day (minutes): today's limit and a change from tomorrow. */
+export type ScreenSettings = { today: number; next: number | null; from: string | null };
+
+export type PinState = { set: boolean; locked: boolean; can_reset: boolean };
 
 export type PurchaseStatus = 'pending' | 'approved' | 'rejected';
 
@@ -171,6 +178,8 @@ export type ChildShop = {
   balance: number;
   /** Balance minus purchases waiting for a signature. */
   available: number;
+  /** Screen minutes today: limit, bought (signed or waiting), left. */
+  screen: { limit: number; used: number; left: number };
   items: { id: string; title: string; icon: string; price: number; kind: 'small' | 'big'; screen_minutes: number | null }[];
   requests: {
     id: string;
@@ -480,6 +489,7 @@ export const api = {
       p_kind: v.kind,
       p_days: v.days,
       p_enabled: v.enabled,
+      p_screen_minutes: v.screenMinutes,
     }),
 
   setShopItemEnabled: (id: string, enabled: boolean) =>
@@ -493,14 +503,27 @@ export const api = {
 
   purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
 
-  decidePurchase: (id: string, approve: boolean) =>
+  /** Signing (approve) needs the parent's PIN; «Не подписывать» does not. */
+  decidePurchase: (id: string, approve: boolean, pin?: string) =>
     rpc<{
       changed: boolean;
-      status: PurchaseStatus;
+      status?: PurchaseStatus;
+      /** pin_wrong, pin_locked or pin_not_set: nothing was signed. */
+      error?: string;
+      tries_left?: number | null;
       decided_by_name?: string | null;
       decided_at?: string | null;
       decided_by_me?: boolean;
-    }>('decide_purchase', { p_request_id: id, p_approve: approve }),
+    }>('decide_purchase', approve ? { p_request_id: id, p_approve: true, p_pin: pin ?? null } : { p_request_id: id, p_approve: false }),
+
+  myPin: () => rpc<PinState>('my_pin'),
+
+  setParentPin: (pin: string, oldPin?: string) =>
+    rpc<{ ok: boolean; error?: string }>('set_parent_pin', oldPin ? { p_new: pin, p_old: oldPin } : { p_new: pin }),
+
+  screenSettings: () => rpc<ScreenSettings>('screen_settings'),
+
+  saveScreenLimit: (minutes: number) => rpc<ScreenSettings>('save_screen_limit', { p_minutes: minutes }),
 
   createParentInvite: () => rpc<{ code: string; expires_at: string }>('create_parent_invite'),
 

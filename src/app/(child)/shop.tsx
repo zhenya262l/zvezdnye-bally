@@ -35,7 +35,7 @@ export default function Shop() {
   if (shop.isError) return <LoadError text={errorText(shop.error)} onRetry={() => shop.refetch()} />;
 
   const tz = who.data?.member?.timezone;
-  const { available, balance, items, requests } = shop.data;
+  const { available, balance, items, requests, screen } = shop.data;
   const groups = [
     { kind: 'small' as const, title: t.shop.small, color: brand.coral },
     { kind: 'big' as const, title: t.shop.big, color: brand.violet },
@@ -70,6 +70,11 @@ export default function Shop() {
             </T>
           ) : null}
         </View>
+        {screen ? (
+          <T v="bodyBold" testID="shop-screen">
+            {t.shop.screenLeft(screen.left, screen.limit)}
+          </T>
+        ) : null}
 
         {requests.length > 0 ? (
           <Card title={t.shop.myRequests} accent={brand.ocean}>
@@ -102,6 +107,7 @@ export default function Shop() {
             <Card key={g.kind} title={g.title} accent={g.color}>
               {list.map((item) => {
                 const missing = item.price - available;
+                const noScreen = !!item.screen_minutes && item.screen_minutes > (screen?.left ?? Infinity);
                 return (
                   <View key={item.id} style={[styles.item, { borderColor: p.border }]} testID={`shop-${item.id}`}>
                     <View style={styles.top}>
@@ -120,9 +126,9 @@ export default function Shop() {
                     </View>
                     <Button
                       testID={`buy-${item.id}`}
-                      title={missing > 0 ? t.shop.missing(missing) : t.shop.buy}
+                      title={missing > 0 ? t.shop.missing(missing) : noScreen ? t.shop.noScreen : t.shop.buy}
                       variant="accent"
-                      disabled={missing > 0}
+                      disabled={missing > 0 || noScreen}
                       onPress={() => {
                         setError(null);
                         setAsking(item);

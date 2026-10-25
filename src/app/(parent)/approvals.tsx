@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,6 +7,7 @@ import { PenIcon } from '@/components/art/Icons';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadError, Loading } from '@/components/Loading';
+import { PinModal, pinErrorText } from '@/components/PinModal';
 import { PurchaseCard } from '@/components/PurchaseCard';
 import { PushPrompt } from '@/components/PushPrompt';
 import { QueueCard } from '@/components/QueueCard';
@@ -30,6 +31,12 @@ export default function Approvals() {
   const { id: highlightId, purchase: highlightPurchase } = useLocalSearchParams<{ id?: string; purchase?: string }>();
   const [busy, setBusy] = useState<string | null>(null);
   const [info, setInfo] = useState<ToastMsg>(null);
+  // Signing a purchase: the PIN dialog for this request.
+  const [pinFor, setPinFor] = useState<PurchaseItem | null>(null);
+  const [pinMode, setPinMode] = useState<'enter' | 'create'>('enter');
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const pinState = useQuery({ queryKey: ['pin', uid], queryFn: api.myPin, enabled: !!uid });
   const hideInfo = useCallback(() => setInfo(null), []);
 
   if (queue.isPending) return <Loading />;
@@ -57,11 +64,58 @@ export default function Approvals() {
     await qc.invalidateQueries({ queryKey: ['queue', uid] }).catch(() => undefined);
   };
 
+  function askPin(item: PurchaseItem) {
+    setInfo(null);
+    setPinError(null);
+    setPinMode(pinState.data?.set === false ? 'create' : 'enter');
+    setPinFor(item);
+  }
+
+  async function signWithPin(pin: string) {
+    if (!pinFor) return;
+    setPinBusy(true);
+    setPinError(null);
+    try {
+      if (pinMode === 'create') {
+        const made = await api.setParentPin(pin);
+        if (!made.ok) {
+          setPinError(pinErrorText(made.error ?? 'generic'));
+          return;
+        }
+        void qc.invalidateQueries({ queryKey: ['pin', uid] });
+        setPinMode('enter');
+      }
+      const r = await api.decidePurchase(pinFor.id, true, pin);
+      if (r.error) {
+        if (r.error === 'pin_not_set') setPinMode('create');
+        setPinError(pinErrorText(r.error, r.tries_left));
+        return;
+      }
+      setPinFor(null);
+      if (!r.changed && !r.decided_by_me) {
+        const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
+        const name = r.decided_by_name || t.common.formerParent;
+        setInfo({
+          text: r.status === 'rejected' ? t.shop.rejectedBy(name, time) : t.shop.signedBy(name, time),
+          kind: 'info',
+        });
+      }
+    } catch (e) {
+      setPinError(errorText(e));
+    } finally {
+      setPinBusy(false);
+      void qc.invalidateQueries({ queryKey: ['purchases', uid] });
+      void qc.invalidateQueries({ queryKey: ['ledger', uid] });
+      void qc.invalidateQueries({ queryKey: ['childDay', uid] });
+    }
+  }
+
   async function decidePurchase(item: PurchaseItem, approve: boolean) {
+    if (approve) return askPin(item);
     setBusy(`buy-${item.id}`);
     setInfo(null);
     try {
-      const r = await api.decidePurchase(item.id, approve);
+      const r = await api.decidePurchase(item.id, false);
       if (!r.changed && !r.decided_by_me) {
         const time = r.decided_at ? formatTime(r.decided_at, tz) : '';
         const name = r.decided_by_name || t.common.formerParent;
@@ -209,6 +263,16 @@ export default function Approvals() {
           </>
         ) : null}
       </Screen>
+      {pinFor ? (
+        <PinModal
+          mode={pinMode}
+          title={`${pinFor.icon} ${pinFor.title} · ${t.shop.cost(pinFor.price)}`}
+          busy={pinBusy}
+          error={pinError}
+          onSubmit={(pin) => void signWithPin(pin)}
+          onCancel={() => setPinFor(null)}
+        />
+      ) : null}
       <Toast msg={info} onHide={hideInfo} inTabs />
     </View>
   );

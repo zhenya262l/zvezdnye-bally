@@ -80,6 +80,7 @@ test('price change → «Купить» → the parent signs → points go', asy
   await C.goto(`${APP}shop`);
   await C.getByTestId(`buy-${ice.id}`).waitFor({ timeout: 15000 });
   assert.match(await C.getByTestId('shop-available').innerText(), /30/);
+  assert.match(await C.getByTestId('shop-screen').innerText(), /осталось 40 из 40 мин/);
   assert.match(await C.getByTestId(`buy-${toy.id}`).innerText(), /Не хватает 30/);
   assert.equal(await C.getByTestId(`buy-${toy.id}`).getAttribute('aria-disabled'), 'true');
   await shot(C, '03-shop');
@@ -96,7 +97,16 @@ test('price change → «Купить» → the parent signs → points go', asy
   await P.goto(`${APP}approvals?purchase=${req.id}`);
   await P.getByTestId(`purchase-sign-${req.id}`).waitFor({ timeout: 15000 });
   await shot(P, '05-sign');
+  // The first signature: no PIN yet, so the parent makes one, then it signs.
   await P.getByTestId(`purchase-sign-${req.id}`).click();
+  await P.getByTestId('pin-modal').waitFor();
+  await seen(P, 'Придумайте ПИН из 4 цифр').waitFor();
+  await P.getByTestId('pin-input').fill('2580');
+  await P.getByTestId('pin-repeat').fill('2580');
+  await P.waitForTimeout(300);
+  await shot(P, '05b-pin');
+  await P.getByTestId('pin-submit').click();
+  await P.getByTestId('pin-modal').waitFor({ state: 'detached', timeout: 10000 });
   await seen(P, '✓ Подпись: Мама').waitFor({ timeout: 10000 });
 
   // The child sees it signed and 8 points left.
@@ -106,4 +116,27 @@ test('price change → «Купить» → the parent signs → points go', asy
   await shot(C, '06-signed');
   await child.ctx.close();
   await parent.ctx.close();
+});
+
+test('a wrong PIN signs nothing; the right one signs', async () => {
+  const p = await familyWithKids('e2e-pin');
+  const d = await pairedChild(p, 0);
+  const kid = p.kids[0];
+  await sql('update public.shop_items set days = $2 where family_id = $1', [p.familyId, [1, 2, 3, 4, 5, 6, 7]]);
+  await p.c.rpc('give_bonus', { p_child_id: kid.id, p_points: 10, p_comment: null });
+  await p.c.rpc('set_parent_pin', { p_new: '1357' });
+  const cartoon = (await p.c.from('shop_items').select('id').eq('title', '20 минут мультика').single()).data;
+  const buy = await d.c.rpc('buy', { p_item_id: cartoon.id });
+  const { ctx, page } = await phone(await sessionOf(p.c));
+  await page.goto(`${APP}approvals`);
+  await page.getByTestId(`purchase-sign-${buy.data.id}`).click();
+  await page.getByTestId('pin-input').fill('0000');
+  await page.getByTestId('pin-submit').click();
+  await seen(page, 'ПИН не подошёл. Осталось попыток: 4.').waitFor({ timeout: 10000 });
+  await page.getByTestId('pin-input').fill('1357');
+  await page.getByTestId('pin-submit').click();
+  await page.getByTestId('pin-modal').waitFor({ state: 'detached', timeout: 10000 });
+  const spent = await sql('select delta from public.ledger where purchase_id = $1', [buy.data.id]);
+  assert.equal(spent.rows[0].delta, -10);
+  await ctx.close();
 });

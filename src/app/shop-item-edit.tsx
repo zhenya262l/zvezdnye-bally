@@ -63,7 +63,16 @@ export default function ShopItemEdit() {
   if (!id) {
     return (
       <ItemForm
-        initial={{ id: null, title: '', icon: '🎁', price: 20, kind: 'small', days: ALL_DAYS, enabled: true }}
+        initial={{
+          id: null,
+          title: '',
+          icon: '🎁',
+          price: 20,
+          kind: 'small',
+          days: ALL_DAYS,
+          enabled: true,
+          screenMinutes: 0,
+        }}
       />
     );
   }
@@ -88,6 +97,7 @@ export default function ShopItemEdit() {
         kind: item.kind,
         days: item.days,
         enabled: item.enabled,
+        screenMinutes: item.screen_minutes ?? 0,
       }}
     />
   );
@@ -99,6 +109,7 @@ function ItemForm({ initial }: { initial: ShopItemInput }) {
   const uid = useSession((s) => s.session?.user.id);
   const [v, setV] = useState<ShopItemInput>(initial);
   const [price, setPrice] = useState(String(initial.price));
+  const [minutes, setMinutes] = useState(initial.screenMinutes ? String(initial.screenMinutes) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -117,11 +128,13 @@ function ItemForm({ initial }: { initial: ShopItemInput }) {
     setError(null);
     const n = Number(price.trim());
     if (!v.title.trim()) return setError(t.errors.invalid_item_title);
-    if (!Number.isInteger(n) || n < 1 || n > 1000) return setError(t.errors.invalid_price);
+    if (!Number.isInteger(n) || n < 1 || n > 10000) return setError(t.errors.invalid_price);
+    const m = minutes.trim() ? Number(minutes.trim()) : 0;
+    if (!Number.isInteger(m) || m < 0 || m > 240) return setError(t.errors.invalid_minutes);
     if (v.days.length === 0) return setError(t.errors.invalid_days);
     setBusy(true);
     try {
-      await api.saveShopItem({ ...v, price: n });
+      await api.saveShopItem({ ...v, price: n, screenMinutes: m });
       done();
     } catch (e) {
       setError(errorText(e));
@@ -179,13 +192,25 @@ function ItemForm({ initial }: { initial: ShopItemInput }) {
         onChangeText={(x) => setPrice(x.replace(/[^0-9]/g, ''))}
         keyboardType="number-pad"
         inputMode="numeric"
-        maxLength={4}
+        maxLength={5}
       />
       {!isNew ? (
         <T v="small" muted>
           {t.shop.priceNote}
         </T>
       ) : null}
+      <Field
+        testID="shop-minutes"
+        label={t.shop.minutesLabel}
+        value={minutes}
+        onChangeText={(x) => setMinutes(x.replace(/[^0-9]/g, ''))}
+        keyboardType="number-pad"
+        inputMode="numeric"
+        maxLength={3}
+      />
+      <T v="small" muted>
+        {t.shop.minutesHint}
+      </T>
       <T v="label">{t.shop.kind}</T>
       <View style={styles.chips}>
         <Chip

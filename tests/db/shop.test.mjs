@@ -16,6 +16,7 @@ after(async () => {
 });
 
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const PIN = '2580';
 
 /** A family, the first child's phone, and `points` given as a bonus. */
 async function setup(tag, points = 0) {
@@ -29,6 +30,9 @@ async function setup(tag, points = 0) {
       await p.c.rpc('give_bonus', { p_child_id: kid.id, p_points: Math.min(left, 50), p_comment: null });
     }
   }
+  // The parent's PIN for signing purchases.
+  const pin = await p.c.rpc('set_parent_pin', { p_new: PIN });
+  assert.equal(pin.error, null);
   // Every good on sale every day, for the test.
   await db.query('update public.shop_items set days = $2 where family_id = $1', [p.familyId, ALL_DAYS]);
   return { p, a, kid };
@@ -74,7 +78,7 @@ test('the parent adds, edits, hides and deletes goods; all of it is logged', asy
   assert.deepEqual([it.price, it.days], [90, [6, 7]]);
   for (const [patch, err] of [
     [{ p_price: 0 }, 'invalid_price'],
-    [{ p_price: 1001 }, 'invalid_price'],
+    [{ p_price: 10001 }, 'invalid_price'],
     [{ p_title: '   ' }, 'invalid_item_title'],
     [{ p_kind: 'huge' }, 'invalid_kind'],
     [{ p_days: [] }, 'invalid_days'],
@@ -150,9 +154,9 @@ test('«Купить» → the parent signs → points go once, never below zero
   const req = queue.data.find((x) => x.id === buy.data.id);
   assert.deepEqual([req.status, req.price, req.child_name], ['pending', 25, kid.name]);
 
-  const sign = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  const sign = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   assert.deepEqual(sign.data, { changed: true, status: 'approved' });
-  const again = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  const again = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   assert.equal(again.data.changed, false, 'double signing takes nothing');
   const spent = await db.query(`select delta, title, kind from public.ledger where purchase_id = $1`, [buy.data.id]);
   assert.deepEqual(spent.rows, [{ delta: -25, title: 'Мороженое в магазине', kind: 'spend' }]);
@@ -175,7 +179,7 @@ test('signing cannot take the balance below zero', async () => {
   // Meanwhile a parent corrects a mistake: −10 points.
   const fix = await p.c.rpc('add_correction', { p_child_id: kid.id, p_delta: -10, p_comment: 'Ошибка в баллах' });
   assert.equal(fix.error, null);
-  const sign = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  const sign = await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   assert.match(sign.error?.message ?? '', /not_enough_points/);
   const balance = await db.query('select coalesce(sum(delta), 0)::int b from public.ledger where child_id = $1', [
     kid.id,
@@ -189,7 +193,7 @@ test('nobody else can buy, sign or see the requests', async () => {
   const buy = await a.c.rpc('buy', { p_item_id: ice.id });
 
   // A child cannot sign her own purchase or write to the tables.
-  const self = await a.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  const self = await a.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   assert.match(self.error?.message ?? '', /parent_only/);
   const direct = await a.c.from('purchase_requests').update({ status: 'approved' }).eq('id', buy.data.id).select();
   assert.ok(direct.error || direct.data.length === 0);
@@ -204,7 +208,7 @@ test('nobody else can buy, sign or see the requests', async () => {
   const other = await familyWithKids('shop-other');
   const theirs = await other.c.from('purchase_requests').select('id');
   assert.equal(theirs.data.length, 0);
-  const sign = await other.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  const sign = await other.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   assert.match(sign.error?.message ?? '', /request_not_found/);
   const foreign = await other.c.rpc('save_shop_item', {
     p_item_id: ice.id,
@@ -233,7 +237,7 @@ test('a purchase notifies the parents; the answer notifies the child', async () 
     );
   }
   const buy = await a.c.rpc('buy', { p_item_id: (await item(p.c, 'Мороженое в магазине')).id });
-  await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   const out = await db.query(
     `select user_id, kind, title, body, url from private.push_outbox where user_id = any($1) order by id`,
     [[p.userId, a.userId]],
@@ -252,7 +256,7 @@ test('a purchase notifies the parents; the answer notifies the child', async () 
 test('deleting the family deletes its shop, purchases and spending', async () => {
   const { p, a } = await setup('shop-delete', 30);
   const buy = await a.c.rpc('buy', { p_item_id: (await item(p.c, 'Мороженое в магазине')).id });
-  await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true });
+  await p.c.rpc('decide_purchase', { p_request_id: buy.data.id, p_approve: true, p_pin: PIN });
   const r = await p.c.rpc('delete_family');
   assert.equal(r.error, null);
   const left = await db.query(

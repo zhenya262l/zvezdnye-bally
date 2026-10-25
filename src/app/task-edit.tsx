@@ -80,6 +80,8 @@ export default function TaskEdit() {
           needsApproval: false,
           needsPhoto: false,
           enabled: true,
+          streakDays: null,
+          streakBonus: null,
         }}
       />
     );
@@ -108,6 +110,8 @@ export default function TaskEdit() {
         needsApproval: task.needs_approval,
         needsPhoto: task.needs_photo,
         enabled: task.enabled,
+        streakDays: task.streak_days,
+        streakBonus: task.streak_bonus,
       }}
     />
   );
@@ -150,7 +154,15 @@ function TaskForm({ initial }: { initial: TaskInput }) {
     if (start && end && start >= end) return setError(t.errors.invalid_window);
     setBusy(true);
     try {
-      await api.saveTask({ ...v, windowStart: start, windowEnd: end });
+      const ids = await api.saveTask({ ...v, windowStart: start, windowEnd: end });
+      // The series is set per saved task (one per child when several are chosen).
+      const days = v.streakDays != null ? Math.min(v.streakDays, v.days.length) : null;
+      const on = days != null && days >= 2 && v.streakBonus != null;
+      if (on || initial.streakDays != null) {
+        for (const taskId of ids ?? []) {
+          await api.setTaskStreak(taskId, on ? days : null, on ? v.streakBonus : null);
+        }
+      }
       done();
     } catch (e) {
       setError(errorText(e));
@@ -272,6 +284,40 @@ function TaskForm({ initial }: { initial: TaskInput }) {
         <SwitchRow label={t.taskEdit.enabled} value={v.enabled} onChange={(enabled) => set({ enabled })} />
       </Card>
 
+      {v.days.length < 2 ? null : (
+        <Card>
+          <SwitchRow
+            testID="task-streak"
+            label={t.streaks.editTitle}
+            hint={t.streaks.editHint}
+            value={v.streakDays != null}
+            onChange={(on) =>
+              set(on ? { streakDays: Math.min(5, v.days.length), streakBonus: 5 } : { streakDays: null, streakBonus: null })
+            }
+          />
+          {v.streakDays != null && v.streakBonus != null ? (
+            <View style={styles.streak}>
+              <Stepper
+                testID="task-streak-days"
+                label={t.streaks.days}
+                value={Math.min(v.streakDays, v.days.length)}
+                min={2}
+                max={v.days.length}
+                onChange={(streakDays) => set({ streakDays })}
+              />
+              <Stepper
+                testID="task-streak-bonus"
+                label={t.streaks.points}
+                value={v.streakBonus}
+                min={1}
+                max={50}
+                onChange={(streakBonus) => set({ streakBonus })}
+              />
+            </View>
+          ) : null}
+        </Card>
+      )}
+
       <Banner text={error} />
       <Button testID="task-save" title={t.common.save} onPress={save} loading={busy} />
       {!isNew ? <Button title={t.taskEdit.delete} variant="danger" onPress={() => setConfirmDelete(true)} /> : null}
@@ -297,4 +343,5 @@ const styles = StyleSheet.create({
   iconCell: { width: 48, height: 48, borderWidth: 3, borderRadius: radius.s, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 26, lineHeight: 32 },
   times: { flexDirection: 'row', gap: space.m },
+  streak: { gap: space.m },
 });

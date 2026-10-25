@@ -9,6 +9,7 @@ import { PhotoSheet } from '@/components/PhotoSheet';
 import { Card } from '@/components/Card';
 import { Formula } from '@/components/Formula';
 import { GradesCard } from '@/components/Grades';
+import { StreaksCard } from '@/components/Streaks';
 import { LoadError, Loading } from '@/components/Loading';
 import { PushPrompt } from '@/components/PushPrompt';
 import { Screen } from '@/components/Screen';
@@ -231,6 +232,7 @@ export default function Today() {
             />
           ))
         )}
+        <StreaksCard />
         <GradesCard />
       </Screen>
       {pill ? (

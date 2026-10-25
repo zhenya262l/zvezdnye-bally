@@ -73,6 +73,18 @@ export function useChildLevel(childId?: string) {
   });
 }
 
+export function useChildStreaks() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['streaks', uid], queryFn: api.childStreaks, enabled: !!uid, refetchInterval: live });
+}
+
+export function useStreakQueue() {
+  const uid = useSession((s) => s.session?.user.id);
+  const live = useLive(LIVE_REFRESH_MS);
+  return useQuery({ queryKey: ['streakQueue', uid], queryFn: api.streakQueue, enabled: !!uid, refetchInterval: live });
+}
+
 export function useChildGrades() {
   const uid = useSession((s) => s.session?.user.id);
   const live = useLive(LIVE_REFRESH_MS);

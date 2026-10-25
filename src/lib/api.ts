@@ -111,6 +111,9 @@ export type TaskTemplate = {
   needs_photo: boolean;
   enabled: boolean;
   sort_order: number;
+  /** Weekly bonus for a series: days in a row and points (both null = none). */
+  streak_days: number | null;
+  streak_bonus: number | null;
 };
 
 export type TaskInput = {
@@ -126,6 +129,8 @@ export type TaskInput = {
   needsApproval: boolean;
   needsPhoto: boolean;
   enabled: boolean;
+  streakDays: number | null;
+  streakBonus: number | null;
 };
 
 export type LedgerRow = {
@@ -232,6 +237,37 @@ export type PurchaseItem = {
   decided_by_name: string | null;
   /** Points she can spend, counting this request as not yet taken (a dream: its piggy bank). */
   available: number;
+};
+
+/** A series this week on the child's «Сегодня». */
+export type ChildStreak = {
+  task_id: string;
+  title: string;
+  icon: string;
+  days: number;
+  bonus: number;
+  /** Scheduled days in a row so far this week, still alive. */
+  run: number;
+  /** The bonus proposed this week, if any. */
+  status: PurchaseStatus | null;
+};
+
+/** A proposed weekly bonus on the parent's «Подписи». */
+export type StreakItem = {
+  id: string;
+  child_id: string;
+  child_name: string;
+  child_color: string;
+  child_avatar: string;
+  title: string;
+  icon: string;
+  days: number;
+  points: number;
+  status: PurchaseStatus;
+  created_at: string;
+  decided_at: string | null;
+  decided_by_name: string | null;
+  decided_by_me: boolean | null;
 };
 
 export type Level = { idx: number; name: string; min_points: number; bonus: number };
@@ -506,7 +542,7 @@ export const api = {
     const { data, error } = await supabase
       .from('task_templates')
       .select(
-        'id,child_id,section_id,title,icon,points,days,window_start,window_end,needs_approval,needs_photo,enabled,sort_order',
+        'id,child_id,section_id,title,icon,points,days,window_start,window_end,needs_approval,needs_photo,enabled,sort_order,streak_days,streak_bonus',
       )
       .eq('child_id', childId)
       .is('deleted_at', null)
@@ -611,6 +647,22 @@ export const api = {
   buy: (itemId: string) => rpc<{ id: string; status: PurchaseStatus; available: number }>('buy', { p_item_id: itemId }),
 
   purchaseQueue: () => rpc<PurchaseItem[]>('purchase_queue'),
+
+  setTaskStreak: (taskId: string, days: number | null, bonus: number | null) =>
+    rpc<null>('set_task_streak', { p_task_id: taskId, p_days: days, p_bonus: bonus }),
+
+  childStreaks: () => rpc<ChildStreak[]>('child_streaks'),
+
+  streakQueue: () => rpc<StreakItem[]>('streak_queue'),
+
+  decideStreak: (id: string, approve: boolean) =>
+    rpc<{
+      changed: boolean;
+      status: PurchaseStatus;
+      decided_by_name?: string | null;
+      decided_at?: string | null;
+      decided_by_me?: boolean;
+    }>('decide_streak', { p_streak_id: id, p_approve: approve }),
 
   childLevel: (childId?: string) => rpc<ChildLevel>('child_level', childId ? { p_child_id: childId } : {}),
 

@@ -1,5 +1,5 @@
 // Stage 4, part 4: the family. A gift to a sister (up to 20 points a day: she
-// sends, the sister accepts, a parent signs), the family agreement (nine rules
+// sends, the sister accepts, a parent signs), the family agreement (eight rules
 // from the paper diary, everyone signs, a change is written down and signed
 // again) and the birthday (a congratulation, a bonus a parent turns on).
 import { test } from 'node:test';
@@ -246,7 +246,7 @@ test('notifications: the sister, the parents, then both daughters', async () => 
   assert.match((await titles(a.userId)).at(-1).title, /Подарок пока не принят/);
 });
 
-test('the family agreement: nine rules (diary and app), signed by everyone', async () => {
+test('the family agreement: eight rules (diary and app), signed by everyone', async () => {
   const p = await familyWithKids('agree-basic');
   const a = await pairedChild(p, 0);
   const cur = (await p.c.rpc('family_agreement')).data;
@@ -254,10 +254,9 @@ test('the family agreement: nine rules (diary and app), signed by everyone', asy
   assert.deepEqual(cur.rules, [
     'Мы честно считаем баллы и не обманываем друг друга.',
     'Родители не отнимают заработанные баллы и не забывают про подпись.',
-    'Ребёнок сам отмечает выполненные дела в приложении. Родитель только проверяет.',
+    'Сделал(-а) дело — сразу сам(-а) отметить в приложении. Если нужно — прикрепи фото. Родитель только проверяет.',
     'Если правило не подходит, мы меняем его вместе и вносим изменения в семейный договор.',
     'Спор решаем спокойно за 5 минут на семейном совете.',
-    'Сделал(-а) дело — сразу отметить в приложении. Если нужно — прикрепи фото.',
     'Хочешь что-то купить — используй магазин.',
     'Копишь на мечту — отложи часть баллов в копилку.',
     'Мама или папа подписывают в приложении дела с проверкой, оценки, покупки, мечты и подарки.',

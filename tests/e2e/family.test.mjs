@@ -64,9 +64,16 @@ test('the agreement comes first: the daughter and the parent sign, the parent ch
   const C = child.page;
   await C.goto(APP);
   await C.getByTestId('agreement-must').waitFor({ timeout: 20000 });
-  assert.equal(await C.getByTestId('agreement-rules').locator('xpath=./div').count(), 5, 'five rules of the diary');
+  assert.equal(await C.getByTestId('agreement-rules').locator('xpath=./div').count(), 9, 'five rules of the diary and four of the app');
   await seen(C, 'Мы честно считаем баллы и не обманываем друг друга.').waitFor();
+  await seen(C, 'Ребёнок сам отмечает выполненные дела в приложении. Родитель только проверяет.').waitFor();
+  await seen(C, 'Если правило не подходит, мы меняем его вместе и вносим изменения в семейный договор.').waitFor();
   await seen(C, 'Спор решаем спокойно за 5 минут на семейном совете.').waitFor();
+  await seen(C, 'Сделал(-а) дело — сразу отметить в приложении. Если нужно — прикрепи фото.').waitFor();
+  await seen(C, 'Хочешь что-то купить — используй магазин.').waitFor();
+  await seen(C, 'Копишь на мечту — отложи часть баллов в копилку.').waitFor();
+  await seen(C, 'Мама или папа подписывают в приложении дела с проверкой, оценки, покупки, мечты и подарки.').waitFor();
+  assert.equal(await C.getByText('галочк').count(), 0, 'there are no checkmarks in the app');
   await shot(C, '01-child-agreement');
   // The tab bar is not there: no way around it.
   assert.equal(await C.getByText('Магазин', { exact: true }).count(), 0);

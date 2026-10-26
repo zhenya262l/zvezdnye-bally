@@ -1,5 +1,5 @@
 // Stage 4, part 4: the family. A gift to a sister (up to 20 points a day: she
-// sends, the sister accepts, a parent signs), the family agreement (five rules
+// sends, the sister accepts, a parent signs), the family agreement (nine rules
 // from the paper diary, everyone signs, a change is written down and signed
 // again) and the birthday (a congratulation, a bonus a parent turns on).
 import { test } from 'node:test';
@@ -246,7 +246,7 @@ test('notifications: the sister, the parents, then both daughters', async () => 
   assert.match((await titles(a.userId)).at(-1).title, /Подарок пока не принят/);
 });
 
-test('the family agreement: five rules from the diary, signed by everyone', async () => {
+test('the family agreement: nine rules (diary and app), signed by everyone', async () => {
   const p = await familyWithKids('agree-basic');
   const a = await pairedChild(p, 0);
   const cur = (await p.c.rpc('family_agreement')).data;
@@ -254,9 +254,13 @@ test('the family agreement: five rules from the diary, signed by everyone', asyn
   assert.deepEqual(cur.rules, [
     'Мы честно считаем баллы и не обманываем друг друга.',
     'Родители не отнимают заработанные баллы и не забывают про подпись.',
-    'Ребёнок сам ставит галочки. Родитель только проверяет.',
-    'Если правило не подходит, мы меняем его вместе и записываем сюда.',
+    'Ребёнок сам отмечает выполненные дела в приложении. Родитель только проверяет.',
+    'Если правило не подходит, мы меняем его вместе и вносим изменения в семейный договор.',
     'Спор решаем спокойно за 5 минут на семейном совете.',
+    'Сделал(-а) дело — сразу отметить в приложении. Если нужно — прикрепи фото.',
+    'Хочешь что-то купить — используй магазин.',
+    'Копишь на мечту — отложи часть баллов в копилку.',
+    'Мама или папа подписывают в приложении дела с проверкой, оценки, покупки, мечты и подарки.',
   ]);
   assert.deepEqual([cur.i_signed, cur.my_signed_at, cur.signatures, cur.changes, cur.can_edit], [false, null, [], [], true]);
   assert.deepEqual(cur.waiting, ['Мама', 'Девочка А']);
@@ -310,7 +314,7 @@ test('a parent changes a rule: a new version, a note, everyone signs again', asy
   await a.c.rpc('sign_agreement', { p_version: 1 });
   await p.c.rpc('sign_agreement', { p_version: 1 });
 
-  const edited = [...rules.slice(0, 4), 'Спор решаем спокойно за 10 минут на семейном совете.'];
+  const edited = rules.map((r, i) => (i === 4 ? 'Спор решаем спокойно за 10 минут на семейном совете.' : r));
   assert.match(errorOf(await a.c.rpc('save_agreement', { p_rules: edited, p_note: 'Десять минут' })), /parent_only/);
   assert.match(errorOf(await p.c.rpc('save_agreement', { p_rules: edited, p_note: '   ' })), /invalid_agreement/);
   assert.match(errorOf(await p.c.rpc('save_agreement', { p_rules: [], p_note: 'x' })), /invalid_agreement/);
@@ -344,7 +348,7 @@ test('a parent changes a rule: a new version, a note, everyone signs again', asy
   assert.equal((await a.c.rpc('whoami')).data.needs_agreement, false);
 
   // A second change: the log keeps both, the newest first.
-  const third = [...edited.slice(0, 4), 'Спор решаем на семейном совете.'];
+  const third = edited.map((r, i) => (i === 4 ? 'Спор решаем на семейном совете.' : r));
   const r3 = await p.c.rpc('save_agreement', { p_rules: third, p_note: 'Без времени' });
   assert.deepEqual(r3.data.changes.map((c) => c.version), [3, 2]);
   // Old signatures stay as they were.

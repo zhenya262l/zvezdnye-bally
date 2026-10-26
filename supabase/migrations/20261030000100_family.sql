@@ -3,7 +3,7 @@
 --   1. A gift to a sister: up to 20 points a day (a parent changes the limit
 --      from the next day). She sends, the sister accepts, a parent signs.
 --      No PIN: the PIN is only for signing a purchase.
---   2. The family agreement: the five rules from the paper diary, everyone
+--   2. The family agreement: the rules from the paper diary and of the app, everyone
 --      signs, a change of a rule is written down and everyone signs again.
 --   3. Birthday: a congratulation for the child. The bonus is off until a
 --      parent turns it on and sets the points.
@@ -454,7 +454,8 @@ create policy agreement_versions_select on public.agreement_versions
 create policy agreement_signatures_select on public.agreement_signatures
   for select to authenticated using (family_id = (select private.my_family_id()));
 
--- The five rules of the paper diary, «Наш семейный договор».
+-- The first agreement of a family: the rules of the paper diary, «Наш семейный
+-- договор», and the rules of using the app (the owner's text, 26.10.2026).
 create or replace function private.agreement_rules()
 returns jsonb
 language sql immutable set search_path = ''
@@ -462,9 +463,13 @@ as $$
   select jsonb_build_array(
     'Мы честно считаем баллы и не обманываем друг друга.',
     'Родители не отнимают заработанные баллы и не забывают про подпись.',
-    'Ребёнок сам ставит галочки. Родитель только проверяет.',
-    'Если правило не подходит, мы меняем его вместе и записываем сюда.',
-    'Спор решаем спокойно за 5 минут на семейном совете.')
+    'Ребёнок сам отмечает выполненные дела в приложении. Родитель только проверяет.',
+    'Если правило не подходит, мы меняем его вместе и вносим изменения в семейный договор.',
+    'Спор решаем спокойно за 5 минут на семейном совете.',
+    'Сделал(-а) дело — сразу отметить в приложении. Если нужно — прикрепи фото.',
+    'Хочешь что-то купить — используй магазин.',
+    'Копишь на мечту — отложи часть баллов в копилку.',
+    'Мама или папа подписывают в приложении дела с проверкой, оценки, покупки, мечты и подарки.')
 $$;
 
 create or replace function private.seed_agreement(p_family uuid)

@@ -663,7 +663,6 @@ export const t = {
     title: 'Оценки',
     add: '📝 Получила оценку',
     sheetTitle: 'Какая оценка?',
-    mark: (m: string) => (m === 'praise' ? 'Похвала' : m),
     praise: 'Похвала учителя или тренера',
     points: (n: number) => (n > 0 ? `+${n}` : '0'),
     subject: 'Предмет или кружок',
@@ -674,7 +673,9 @@ export const t = {
     pending: '⏳ ждёт подписи',
     approved: (n: number) => (n > 0 ? `✓ +${n}` : '✓ засчитано'),
     rejected: 'не засчитано',
-    title2: (m: string, subject: string) => (m === 'praise' ? `Похвала · ${subject}` : `${m} · ${subject}`),
+    // The caption of a request: a grade is «Оценка 10 · Математика», a praise is «Похвала учителя · Танцы».
+    caption: (mark: string, subject: string) =>
+      mark === 'praise' ? `Похвала учителя · ${subject}` : `Оценка ${mark} · ${subject}`,
     // Parent
     heading: 'Оценки',
     sign: 'Подтвердить',

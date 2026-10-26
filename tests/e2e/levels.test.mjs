@@ -79,9 +79,21 @@ test('a grade is signed, a new level comes with its bonus, the grade table chang
   const parent = await phone(await sessionOf(p.c));
   const P = parent.page;
   await P.goto(`${APP}approvals?grade=${grade}`);
-  await seen(P, '📝 9 · Математика').waitFor({ timeout: 15000 });
+  await seen(P, '📝 Оценка 9 · Математика').waitFor({ timeout: 15000 });
   await P.getByTestId(`grade-sign-${grade}`).click();
   await seen(P, '✓ Подпись: Мама').waitFor({ timeout: 10000 });
+
+  // A praise is not a grade: both captions say so, on her list and on «Подписи».
+  await C.goto(`${APP}today`);
+  await seen(C, 'Оценка 9 · Математика').waitFor({ timeout: 15000 });
+  await C.getByTestId('grade-add').click({ timeout: 15000 });
+  await C.getByTestId('grade-mark-praise').click();
+  await C.getByTestId('grade-subject').fill('Танцы');
+  await C.getByTestId('grade-send').click();
+  await seen(C, 'Похвала учителя · Танцы').waitFor({ timeout: 10000 });
+  await P.goto(`${APP}approvals`);
+  await seen(P, '📝 Похвала учителя · Танцы').waitFor({ timeout: 15000 });
+  await shot(P, '03-parent-praise');
 
   // 295 + 8 = 303: a new level and +10 by itself.
   await C.goto(`${APP}me`);

@@ -35,7 +35,7 @@ export function GradesCard() {
         <View key={x.id} style={[styles.row, { borderColor: p.border }]} testID={`my-grade-${x.id}`}>
           <T style={styles.icon}>📝</T>
           <T v="bodyBold" style={styles.flex}>
-            {t.grades.title2(t.grades.mark(x.mark), x.subject)}
+            {t.grades.caption(x.mark, x.subject)}
           </T>
           <T
             v="label"
@@ -206,7 +206,7 @@ export function GradeCard({
       <View style={styles.top}>
         <Avatar id={item.child_avatar} color={item.child_color} size={44} />
         <View style={styles.flex}>
-          <T v="bodyBold">{`📝 ${t.grades.title2(t.grades.mark(item.mark), item.subject)}`}</T>
+          <T v="bodyBold">{`📝 ${t.grades.caption(item.mark, item.subject)}`}</T>
           <T v="small" muted>
             {`${item.child_name} · ${formatTime(item.created_at, tz)}`}
           </T>

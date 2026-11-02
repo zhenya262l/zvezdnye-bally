@@ -1,6 +1,6 @@
 // Stage 4, part 1: the dream piggy bank. A daughter proposes a dream, a parent
 // sets the price; points put aside cannot be spent in the shop (SPEC section 7,
-// «покупка из отложенных баллов»); points taken back are spent only tomorrow;
+// «покупка из отложенных баллов»); points taken back are spent at once (owner, 02.11.2026);
 // a full dream is bought with the parent's PIN, paid from the piggy bank.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -74,7 +74,7 @@ test('a daughter proposes a dream, a parent sets the price once', async () => {
   assert.equal(row.rows[0].price, 3000);
 });
 
-test('points in the piggy bank cannot be spent; taken back ones only tomorrow', async () => {
+test('points in the piggy bank cannot be spent; taken back ones at once', async () => {
   const { p, a } = await setup('goal-hold');
   const goal = await dream(p, a, 100);
   const sweets = await itemId(p, 'Любимое лакомство'); // 20 points
@@ -90,21 +90,19 @@ test('points in the piggy bank cannot be spent; taken back ones only tomorrow', 
   assert.deepEqual(r.data, { held: 30, free: 20, available: 20 });
   r = await a.c.rpc('move_goal_points', { p_goal_id: goal, p_points: 10 });
 
-  // Saved yesterday, taken back today: spent only tomorrow.
+  // Saved yesterday, taken back today: free to spend at once.
   await sql(`update public.goal_holds set for_date = for_date - 1 where goal_id = $1`, [goal]);
   r = await a.c.rpc('move_goal_points', { p_goal_id: goal, p_points: -30 });
-  assert.deepEqual(r.data, { held: 10, free: 40, available: 10 });
-  assert.match(errorOf(await a.c.rpc('buy', { p_item_id: sweets })), /not_enough_points/);
+  assert.deepEqual(r.data, { held: 10, free: 40, available: 40 });
   const shop = (await a.c.rpc('child_shop')).data;
-  assert.deepEqual([shop.available, shop.held, shop.back_today], [10, 10, 30]);
-  // Put back the same day: allowed (it is not spending).
+  assert.deepEqual([shop.available, shop.held, shop.back_today], [40, 10, 0]);
+  // Put back: allowed.
   r = await a.c.rpc('move_goal_points', { p_goal_id: goal, p_points: 30 });
   assert.deepEqual(r.data, { held: 40, free: 10, available: 10 });
   assert.match(errorOf(await a.c.rpc('move_goal_points', { p_goal_id: goal, p_points: -41 })), /not_enough_held/);
   r = await a.c.rpc('move_goal_points', { p_goal_id: goal, p_points: -30 });
 
-  // Next day: the 30 points are free to spend.
-  await sql(`update public.goal_holds set for_date = for_date - 1 where goal_id = $1`, [goal]);
+  // Taken back just now: the 30 points are free to spend at once.
   assert.equal((await a.c.rpc('child_shop')).data.available, 40);
   const bought = await a.c.rpc('buy', { p_item_id: sweets });
   assert.equal(bought.error, null);
@@ -157,9 +155,9 @@ test('a parent cancels a dream; strangers and the sister cannot touch it', async
 
   const r = await p.c.rpc('cancel_goal', { p_goal_id: goal });
   assert.deepEqual(r.data, { changed: true, status: 'cancelled', returned: 30 });
-  // Saved earlier, returned today: spent from tomorrow.
+  // Saved earlier, returned by the parent today: free to spend at once.
   const shop = (await a.c.rpc('child_shop')).data;
-  assert.deepEqual([shop.held, shop.back_today, shop.available], [0, 30, 20]);
+  assert.deepEqual([shop.held, shop.back_today, shop.available], [0, 0, 50]);
 
   // An empty dream or a proposal: the child removes it herself.
   const idea = (await a.c.rpc('propose_goal', { p_title: 'Котёнок' })).data;

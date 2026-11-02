@@ -689,7 +689,6 @@ export const t = {
     inPiggy: (n: number) => `В копилке: ⭐ ${n}`,
     ofThemPiggy: (n: number) => `Из них в копилке мечты: ${n}`,
     canPut: (n: number) => `Можно отложить: ${n}`,
-    backTomorrow: (n: number) => `Забрала сегодня ${n}. Потратить их можно завтра.`,
     progress: (held: number, price: number) => `⭐ ${held} из ${price}`,
     left: (n: number) => `Осталось собрать ${n}`,
     full: 'Мечта собрана!',
@@ -715,7 +714,7 @@ export const t = {
     takeTitle: 'Забрать из мечты',
     amount: 'Сколько баллов',
     putMax: (n: number) => `Можно до ${n}`,
-    takeNote: 'Баллы, которые лежали в копилке со вчера или раньше, можно потратить только завтра.',
+    takeNote: 'Забранные баллы можно потратить сразу.',
     all: 'Всё',
     putDone: (n: number) => `Отложено ${n}`,
     takeDone: (n: number) => `Забрано ${n}`,
@@ -741,7 +740,7 @@ export const t = {
     cancelTitle: 'Отменить мечту?',
     cancelText: (title: string, held: number) =>
       held > 0
-        ? `«${title}» закроется. ${held} из копилки вернутся, потратить их можно с завтрашнего дня.`
+        ? `«${title}» закроется. ${held} из копилки вернутся, и их можно потратить сразу.`
         : `«${title}» закроется.`,
     heldNote: (name: string, n: number) => `${name}: в копилке мечты ${n}`,
   },

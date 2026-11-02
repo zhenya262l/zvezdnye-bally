@@ -193,11 +193,11 @@ export type PurchaseStatus = 'pending' | 'approved' | 'rejected';
 export type ChildShop = {
   child_id: string;
   balance: number;
-  /** Balance minus the piggy bank, purchases waiting for a signature and points taken back today. */
+  /** Balance minus the piggy bank, purchases waiting for a signature. */
   available: number;
   /** Points in the piggy bank. */
   held: number;
-  /** Points taken out of the piggy bank today: spendable from tomorrow. */
+  /** Always 0 since 02.11.2026: points taken out of the piggy bank are spendable at once. */
   back_today: number;
   /** Screen minutes today: limit, bought (signed or waiting), left. */
   screen: { limit: number; used: number; left: number };

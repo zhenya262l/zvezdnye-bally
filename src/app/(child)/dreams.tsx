@@ -72,11 +72,6 @@ export default function Dreams() {
           <T v="bodyBold" color={brand.ocean} testID="piggy-free">
             {t.dreams.canPut(g.free)}
           </T>
-          {g.back_today > 0 ? (
-            <T v="small" color={brand.ocean} center testID="piggy-back">
-              {t.dreams.backTomorrow(g.back_today)}
-            </T>
-          ) : null}
         </View>
 
         {open.length < 5 ? (
